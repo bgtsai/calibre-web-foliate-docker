@@ -1,2 +1,65 @@
 # calibre-web-foliate-docker
-Docker image for Calibre-Web with foliate-js reader — no Tampermonkey required
+
+[English](#english) | **繁體中文**
+
+以 [foliate-js](https://github.com/johnfactotum/foliate-js) 取代 [Calibre-Web](https://github.com/janeczku/calibre-web) 內建 epub.js 閱讀器的 Docker image。不需要安裝 Tampermonkey。
+
+## 功能
+
+- 以 foliate-js 渲染 EPUB，支援多欄版面、精準翻頁定位
+- 完整設定面板：字體、字級、行距、字距、色彩主題、翻頁動畫等
+- 自訂字體上傳（存入 IndexedDB）
+- 閱讀進度自動儲存（localStorage，同源持久）
+- 雙語介面（繁體中文 / English，自動偵測或手動切換）
+- 完整 Calibre-Web 功能不受影響（書庫、書籤、使用者管理等）
+
+## 快速開始
+
+```yaml
+services:
+  calibre-web-foliate:
+    image: ghcr.io/bgtsai/calibre-web-foliate-docker:latest
+    container_name: calibre-web-foliate
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Taipei
+    volumes:
+      - /path/to/config:/config
+      - /path/to/books:/books
+    ports:
+      - 8083:8083
+    restart: unless-stopped
+```
+
+## 與上游的差異
+
+| 檔案 | 說明 |
+|---|---|
+| `cps/templates/read.html` | 取代原版 epub.js 閱讀器頁面 |
+| `cps/static/js/cwfm/app-ui.js` | foliate-js 閱讀器 UI（設定面板、工具列等） |
+| `cps/static/js/cwfm/foliate-view.bundle.js` | foliate-js 核心 |
+
+原版的 `jszip_epub.min.js`、`epub.min.js`、`reader.min.js`、`epub.js` 保留不動（部分非 EPUB 格式仍使用原版閱讀器）。
+
+## 設定儲存
+
+Tampermonkey 版使用 `GM_setValue` 跨網域儲存；Docker 版改用 `localStorage`（同源，Calibre-Web 所在的 domain）。清除瀏覽器資料時設定會一併清除，這是已知的取捨。
+
+## 授權
+
+本專案基於 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web)（GPL v3）與 [janeczku/calibre-web](https://github.com/janeczku/calibre-web)（GPL v3），以 GPL v3 授權釋出。
+
+foliate-js 以 MIT 授權釋出，已包含在本專案中。
+
+---
+
+## English
+
+A Docker image that replaces [Calibre-Web](https://github.com/janeczku/calibre-web)'s built-in epub.js reader with [foliate-js](https://github.com/johnfactotum/foliate-js). No Tampermonkey required.
+
+See the [Tampermonkey userscript version](https://github.com/bgtsai/calibre-web-foliate-mod) for feature details.
+
+### License
+
+GPL v3. Based on linuxserver/docker-calibre-web (GPL v3) and janeczku/calibre-web (GPL v3). foliate-js is MIT licensed.

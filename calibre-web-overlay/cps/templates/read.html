@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>{{ title }}</title>
+    {% if g.google_site_verification|length > 0 %}
+    <meta name="google-site-verification" content="{{ g.google_site_verification }}">
+    {% endif %}
+    <link rel="apple-touch-icon" sizes="140x140" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; }
+        #cwfm-root { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <div id="cwfm-root"></div>
+
+    <!-- Calibre-Web 全域變數：書籍 URL、書籤等，app-ui.js 需要讀取 -->
+    <script type="text/javascript">
+        window.calibre = {
+            filePath: "{{ url_for('static', filename='js/libs/') }}",
+            cssPath: "{{ url_for('static', filename='css/') }}",
+            bookmarkUrl: "{{ url_for('web.set_bookmark', book_id=bookid, book_format=book_format) }}",
+            bookUrl: "{{ url_for('web.serve_book', book_id=bookid, book_format=book_format, anyname='file.epub') }}",
+            bookmark: "{{ bookmark.bookmark_key if bookmark != None }}",
+            useBookmarks: "{{ current_user.is_authenticated | tojson }}"
+        };
+    </script>
+
+    <!-- cwfm bootstrap：依序載入 foliate bundle → 替換佔位字串後執行 app-ui.js -->
+    <script type="text/javascript">
+    (function () {
+        // 從 bookUrl 解析 BOOK_ID
+        // bookUrl 格式：/read/<book_id>/epub/file.epub
+        var bookUrl = window.calibre && window.calibre.bookUrl || '';
+        var bookIdMatch = bookUrl.match(/\/read\/(\d+)\//);
+        var BOOK_ID = bookIdMatch ? bookIdMatch[1] : String(Date.now());
+
+        var STORAGE_KEY = 'cwfm-settings';
+        var POSITION_KEY = 'cwfm-position-' + BOOK_ID;
+        var VIEWER_SELECTOR = '#cwfm-root';
+
+        // 從 localStorage 讀取初始值（對應 Tampermonkey 版的 GM_getValue）
+        function readStorage(key) {
+            try {
+                var raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        var initialSettings = readStorage(STORAGE_KEY);
+        var initialPosition = readStorage(POSITION_KEY);
+
+        // 攔截 cwfm:gm-set 事件，寫入 localStorage（對應 Tampermonkey 外層腳本的角色）
+        document.addEventListener('cwfm:gm-set', function (e) {
+            try {
+                localStorage.setItem(e.detail.key, JSON.stringify(e.detail.value));
+            } catch (err) {
+                console.error('[cwfm] localStorage write failed', err);
+            }
+        });
+
+        function injectScript(src) {
+            return new Promise(function (resolve, reject) {
+                var script = document.createElement('script');
+                script.textContent = src;
+                document.head.appendChild(script);
+                resolve();
+            });
+        }
+
+        function fetchText(url) {
+            return fetch(url).then(function (res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + url);
+                return res.text();
+            });
+        }
+
+        // Step 1: 先載入 foliate-view.bundle.js（定義 <foliate-view> custom element）
+        // Step 2: 再載入 app-ui.js，替換佔位字串後執行
+        fetchText('{{ url_for("static", filename="js/cwfm/foliate-view.bundle.js") }}')
+            .then(function (bundleSrc) {
+                return injectScript(bundleSrc);
+            })
+            .then(function () {
+                return fetchText('{{ url_for("static", filename="js/cwfm/app-ui.js") }}');
+            })
+            .then(function (appSrc) {
+                // 替換四個佔位字串（需與 src/app-ui.js 裡的宣告行完全一致）
+                appSrc = appSrc.replace(
+                    'const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";',
+                    'const INITIAL_SETTINGS = ' + (initialSettings ? JSON.stringify(initialSettings) : 'null') + ';'
+                );
+                appSrc = appSrc.replace(
+                    'const INITIAL_POSITION = "__INITIAL_POSITION__";',
+                    'const INITIAL_POSITION = ' + (initialPosition ? JSON.stringify(initialPosition) : 'null') + ';'
+                );
+                appSrc = appSrc.replace(
+                    "const BOOK_ID = '__BOOK_ID__';",
+                    "const BOOK_ID = " + JSON.stringify(BOOK_ID) + ";"
+                );
+                appSrc = appSrc.replace(
+                    "const VIEWER_SELECTOR = '__VIEWER_SELECTOR__';",
+                    "const VIEWER_SELECTOR = " + JSON.stringify(VIEWER_SELECTOR) + ";"
+                );
+                return injectScript(appSrc);
+            })
+            .catch(function (err) {
+                console.error('[cwfm] 閱讀器載入失敗:', err);
+                document.body.innerHTML = '<p style="color:#ff6b6b;padding:40px;font-family:sans-serif;font-size:16px">閱讀器載入失敗，請重新整理頁面。<br><small>' + err.message + '</small></p>';
+            });
+    })();
+    </script>
+</body>
+</html>
