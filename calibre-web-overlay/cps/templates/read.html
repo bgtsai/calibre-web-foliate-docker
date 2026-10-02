@@ -19,7 +19,6 @@
 <body>
     <div id="cwfm-root"></div>
 
-    <!-- Calibre-Web 全域變數：書籍 URL、書籤等，app-ui.js 需要讀取 -->
     <script type="text/javascript">
         window.calibre = {
             filePath: "{{ url_for('static', filename='js/libs/') }}",
@@ -29,21 +28,15 @@
             bookmark: "{{ bookmark.bookmark_key if bookmark != None }}",
             useBookmarks: "{{ current_user.is_authenticated | tojson }}"
         };
-
-        // 從 bookUrl 解析 BOOK_ID
         (function () {
             var bookUrl = window.calibre.bookUrl || '';
             var bookIdMatch = bookUrl.match(/\/read\/(\d+)\//);
             window.calibre.bookId = bookIdMatch ? bookIdMatch[1] : String(Date.now());
-
-            // 讀取初始值（對應 Tampermonkey 版的 GM_getValue）
             function readStorage(key) {
                 try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
             }
             window.calibre.initialSettings = readStorage('cwfm-settings');
             window.calibre.initialPosition = readStorage('cwfm-position-' + window.calibre.bookId);
-
-            // 攔截 cwfm:gm-set 事件，寫入 localStorage
             document.addEventListener('cwfm:gm-set', function (e) {
                 try { localStorage.setItem(e.detail.key, JSON.stringify(e.detail.value)); }
                 catch (err) { console.error('[cwfm] localStorage write failed', err); }
@@ -51,10 +44,10 @@
         })();
     </script>
 
-    <!-- Step 1: 以 ES module 載入 foliate bundle（定義 foliate-view 等 custom elements） -->
+    <!-- Step 1: 以 ES module 載入 foliate bundle，定義 foliate-view 等 custom elements -->
     <script type="module" src="{{ url_for('static', filename='js/cwfm/foliate-view.bundle.js') }}"></script>
 
-    <!-- Step 2: 等 bundle 載入完畢後，再以 classic script 啟動 app-ui.js bootstrap -->
+    <!-- Step 2: 等 foliate-view 定義完成後，fetch app-ui.js、替換佔位字串、再注入執行 -->
     <script type="text/javascript">
     (function () {
         var BOOK_ID = window.calibre.bookId;
@@ -78,41 +71,30 @@
             });
         }
 
-        // 等到 foliate-view custom element 被定義後再啟動
-        function waitForFoliateView() {
-            return new Promise(function (resolve) {
-                if (customElements.get('foliate-view')) return resolve();
-                customElements.whenDefined('foliate-view').then(resolve);
-            });
-        }
-
-        waitForFoliateView()
-            .then(function () {
-                return fetchText('{{ url_for("static", filename="js/cwfm/app-ui.js") }}');
-            })
-            .then(function (appSrc) {
-                appSrc = appSrc.replace(
-                    'const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";',
-                    'const INITIAL_SETTINGS = ' + (initialSettings ? JSON.stringify(initialSettings) : 'null') + ';'
-                );
-                appSrc = appSrc.replace(
-                    'const INITIAL_POSITION = "__INITIAL_POSITION__";',
-                    'const INITIAL_POSITION = ' + (initialPosition ? JSON.stringify(initialPosition) : 'null') + ';'
-                );
-                appSrc = appSrc.replace(
-                    "const BOOK_ID = '__BOOK_ID__';",
-                    "const BOOK_ID = " + JSON.stringify(BOOK_ID) + ";"
-                );
-                appSrc = appSrc.replace(
-                    "const VIEWER_SELECTOR = '__VIEWER_SELECTOR__';",
-                    "const VIEWER_SELECTOR = " + JSON.stringify(VIEWER_SELECTOR) + ";"
-                );
-                return injectScript(appSrc);
-            })
-            .catch(function (err) {
-                console.error('[cwfm] 閱讀器載入失敗:', err);
-                document.body.innerHTML = '<p style="color:#ff6b6b;padding:40px;font-family:sans-serif;font-size:16px">閱讀器載入失敗，請重新整理頁面。<br><small>' + err.message + '</small></p>';
-            });
+        customElements.whenDefined('foliate-view').then(function () {
+            return fetchText('{{ url_for("static", filename="js/cwfm/app-ui.js") }}');
+        }).then(function (appSrc) {
+            appSrc = appSrc.replace(
+                'const INITIAL_SETTINGS = "__INITIAL_SETTINGS__";',
+                'const INITIAL_SETTINGS = ' + (initialSettings ? JSON.stringify(initialSettings) : 'null') + ';'
+            );
+            appSrc = appSrc.replace(
+                'const INITIAL_POSITION = "__INITIAL_POSITION__";',
+                'const INITIAL_POSITION = ' + (initialPosition ? JSON.stringify(initialPosition) : 'null') + ';'
+            );
+            appSrc = appSrc.replace(
+                "const BOOK_ID = '__BOOK_ID__';",
+                "const BOOK_ID = " + JSON.stringify(BOOK_ID) + ";"
+            );
+            appSrc = appSrc.replace(
+                "const VIEWER_SELECTOR = '__VIEWER_SELECTOR__';",
+                "const VIEWER_SELECTOR = " + JSON.stringify(VIEWER_SELECTOR) + ";"
+            );
+            return injectScript(appSrc);
+        }).catch(function (err) {
+            console.error('[cwfm] 閱讀器載入失敗:', err);
+            document.body.innerHTML = '<p style="color:#ff6b6b;padding:40px;font-family:sans-serif;font-size:16px">閱讀器載入失敗，請重新整理頁面。<br><small>' + err.message + '</small></p>';
+        });
     })();
     </script>
 </body>
