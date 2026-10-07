@@ -49,6 +49,14 @@ The old reader's files remain in the image (other pages may use them); the EPUB 
 
 Upgrading the reader: change `CWFM_MOD_REF` in the `Dockerfile` to the mod's new commit SHA and push. The value also serves as a browser cache-busting parameter, so the old file is never served after an upgrade.
 
+## Build status RSS
+
+The image is rebuilt automatically when the upstream `linuxserver/calibre-web` image changes (checked daily at 12:00 Taipei time). Each run posts an item to:
+
+https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-docker/main/build_status.xml
+
+🟢 no upstream update · 🔵 rebuilt and pushed · 🔴 failed (the previous image stays in place).
+
 ## Settings storage
 
 The Tampermonkey version stores settings across domains with `GM_setValue`; the Docker version uses `localStorage` instead (same-origin, i.e. the domain Calibre-Web is served from). Clearing browser data clears the settings too — a known trade-off.

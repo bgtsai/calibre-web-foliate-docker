@@ -49,6 +49,14 @@ services:
 
 升級閱讀器：把 `Dockerfile` 的 `CWFM_MOD_REF` 改成 mod 新的 commit SHA 並推送即可。這個值同時當作瀏覽器快取破壞參數，換版後不會讀到舊檔。
 
+## 建置狀態 RSS
+
+每天台灣時間 12:00 檢查上游 `linuxserver/calibre-web`，有新版就自動重新建置。每次執行都會在下面這個 RSS 新增一則：
+
+https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-docker/main/build_status.xml
+
+🟢 上游無更新 · 🔵 已更新建置 · 🔴 失敗（image 維持上一版）。
+
 ## 設定儲存
 
 Tampermonkey 版使用 `GM_setValue` 跨網域儲存；Docker 版改用 `localStorage`（同源，Calibre-Web 所在的 domain）。清除瀏覽器資料時設定會一併清除，這是已知的取捨。
