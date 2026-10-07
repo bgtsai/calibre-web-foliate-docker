@@ -1,3 +1,4 @@
 # 開發用原始碼（從 calibre-web-foliate-mod 拉取，不進 repo）
 src/
 vendor/
+__pycache__/

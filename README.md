@@ -34,13 +34,16 @@ services:
 
 ## 與上游的差異
 
+閱讀器程式碼不另存副本，建置 image 時直接從 [calibre-web-foliate-mod](https://github.com/bgtsai/calibre-web-foliate-mod) 的指定 commit（`Dockerfile` 的 `CWFM_MOD_REF`）組裝：
+
 | 檔案 | 說明 |
 |---|---|
-| `cps/templates/read.html` | 取代原版 epub.js 閱讀器頁面 |
-| `cps/static/js/cwfm/app-ui.js` | foliate-js 閱讀器 UI（設定面板、工具列等） |
-| `cps/static/js/cwfm/foliate-view.bundle.js` | foliate-js 核心 |
+| `cps/static/js/cwfm/cwfm-reader.js` | foliate-js 引擎 + 閱讀器介面，由 `build/make_reader.py` 從 mod 原始碼產生 |
+| `cps/templates/read.html` | 由 `build/patch_read_html.py` 就地修改：移除舊 epub.js 閱讀器的腳本與樣式，加入上面這支程式；頁面其餘結構保留 |
 
-原版的 `jszip_epub.min.js`、`epub.min.js`、`reader.min.js`、`epub.js` 保留不動（部分非 EPUB 格式仍使用原版閱讀器）。
+舊閱讀器的檔案本身仍留在 image 裡（其他頁面可能用到），只是 epub 閱讀頁不再載入。
+
+升級閱讀器：把 `Dockerfile` 的 `CWFM_MOD_REF` 改成 mod 新的 commit SHA 並推送即可。這個值同時當作瀏覽器快取破壞參數，換版後不會讀到舊檔。
 
 ## 設定儲存
 

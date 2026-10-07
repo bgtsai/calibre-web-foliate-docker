@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'Dockerfile'
-      - 'calibre-web-overlay/**'
+      - 'build/**'
       - '.github/workflows/build.yml'
   workflow_dispatch:
 
