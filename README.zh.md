@@ -68,6 +68,8 @@ Calibre-Web 內建的 epub.js 閱讀器，排版控制項有限（字級、字�
 
 ## 快速開始
 
+**鏡像**：`ghcr.io/bgtsai/calibre-web-foliate-docker:latest`——[映像檔倉庫頁面（版本、拉取指令）](https://github.com/bgtsai/calibre-web-foliate-docker/pkgs/container/calibre-web-foliate-docker)
+
 ```yaml
 services:
   calibre-web-foliate:

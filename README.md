@@ -68,6 +68,8 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 ## Quick start
 
+**Image**: `ghcr.io/bgtsai/calibre-web-foliate-docker:latest` — [package page (versions, pull command)](https://github.com/bgtsai/calibre-web-foliate-docker/pkgs/container/calibre-web-foliate-docker)
+
 ```yaml
 services:
   calibre-web-foliate:
