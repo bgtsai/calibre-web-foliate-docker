@@ -9,7 +9,8 @@
 2. esbuild 以 target=safari15 轉譯語法（主要是 class static 區塊）
    不壓縮、保留排版：iPad 錯誤面板回報的行號，要能在這邊重現同一份檔案後對回原始碼
 3. check_output.mjs 用語法樹確認沒有殘留 Safari 15 看不懂的語法
-4. 最前面接上 polyfills.js（缺少的內建函式代用品）
+4. 最前面接上 polyfills.js（缺少的內建函式代用品）與 decompression_polyfill.mjs
+   （DecompressionStream，用 fflate 實作，esbuild 打包成 IIFE）
 
 【診斷用】環境變數 CWFM_CHECKPOINTS=1 時，在第 3 步之後插入檢查點
 （add_checkpoints.mjs），用來找 iOS 15 載入時引擎當掉的位置。找到原因後移除。
@@ -76,8 +77,14 @@ def main(argv):
     if os.environ.get("CWFM_CHECKPOINTS") == "1":
         run(["node", str(HERE / "add_checkpoints.mjs"), str(tmp_out), str(tmp_out)], "插入檢查點")
 
+    tmp_dec = out_path.with_suffix(".dec.js")
+    run([str(nm / ".bin" / "esbuild"), str(HERE / "decompression_polyfill.mjs"), "--bundle", "--format=iife",
+         "--target=safari15", "--minify", "--legal-comments=inline", "--log-level=warning",
+         f"--outfile={tmp_dec}"], "打包 DecompressionStream 代用品")
     poly = (HERE / "polyfills.js").read_text(encoding="utf-8")
-    out_path.write_text(poly + "\n" + tmp_out.read_text(encoding="utf-8"), encoding="utf-8")
+    dec = tmp_dec.read_text(encoding="utf-8")
+    out_path.write_text(poly + "\n" + dec + "\n" + tmp_out.read_text(encoding="utf-8"), encoding="utf-8")
+    tmp_dec.unlink()
     tmp_in.unlink()
     tmp_out.unlink()
     print(f"[make_legacy] OK → {out_path}（{out_path.stat().st_size} bytes）")
