@@ -21,7 +21,7 @@
 2. **本機測試**（見下面「測試」），三種瀏覽器都要過
 3. **這個 repo**：`Dockerfile` 的 `ARG CWFM_MOD_REF=` 改成新的完整 SHA → commit、push
    - 這個值同時是瀏覽器快取破壞參數，不用另外處理快取
-4. GitHub Actions（`.github/workflows/build.yml`）自動建置推到 Docker Hub；用 `gh run list` 確認成功
+4. GitHub Actions（`.github/workflows/build.yml`）自動建置推到 GitHub Container Registry（ghcr.io/bgtsai/calibre-web-foliate-docker）；用 `gh run list` 確認成功
 5. 回報使用者：mod 版本號、兩邊 commit、請他在 Synology 更新 image
 
 ## 建置流程（各檔案職責）
