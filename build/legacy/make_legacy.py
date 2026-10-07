@@ -4,7 +4,8 @@
 用法：python3 make_legacy.py <輸入 js> <輸出 js> <node_modules 所在目錄>
 
 步驟（每一步失敗都中止建置）：
-1. 手動改寫唯一一處正規表示式往回比對（esbuild 不會轉換正規表示式）
+1. 手動改寫唯一一處正規表示式往回比對（esbuild 不會轉換正規表示式），
+   並拿掉全檔唯一的頂層 await（見下方 TLA_OLD 的說明）
 2. esbuild 以 target=safari15 轉譯語法（主要是 class static 區塊）
    不壓縮、保留排版：iPad 錯誤面板回報的行號，要能在這邊重現同一份檔案後對回原始碼
 3. check_output.mjs 用語法樹確認沒有殘留 Safari 15 看不懂的語法
@@ -26,6 +27,21 @@ LOOKBEHIND_OLD = '.replace(/(?<=[{\\s;])-epub-/gi, "")'
 LOOKBEHIND_NEW = '.replace(/([{\\s;])-epub-/gi, "$1")'
 
 
+# 頂層 await：foliate-js 自帶的 PDF 支援在模組載入時就 await 下載兩個 pdf.js 樣式檔。
+# iOS 15.3 的 WebKit 執行到這裡整個頁面當掉（沒有任何錯誤訊息；用檢查點定位到這個敘述）。
+# 在 Calibre-Web 裡這段程式用不到：epub 頁只會開 epub，PDF 由 Calibre-Web 自己的
+# readpdf.html 處理；而且這兩個檔案本來就沒有隨附（一直是 404），拿到的是錯誤頁文字。
+# 改成空字串：不下載、不 await，對 EPUB 與實際的 PDF 閱讀都沒有影響。
+TLA_OLD = (
+    '  Sc = await Ac(vc("text_layer_builder.css")),\n'
+    '  Tc = await Ac(vc("annotation_layer_builder.css")),\n'
+)
+TLA_NEW = (
+    '  Sc = "", // [cwfm-docker] 原為頂層 await 下載 pdf.js 樣式，iOS 15 會當機，見 make_legacy.py\n'
+    '  Tc = "",\n'
+)
+
+
 def run(cmd, label):
     r = subprocess.run(cmd, capture_output=True, text=True)
     out = (r.stdout + r.stderr).strip()
@@ -45,6 +61,10 @@ def main(argv):
     if n != 1:
         sys.exit(f"[make_legacy] 錯誤：往回比對那一行應該剛好 1 處，實際 {n} 處（引擎改版了，要重新確認改寫方式）")
     text = text.replace(LOOKBEHIND_OLD, LOOKBEHIND_NEW)
+    n = text.count(TLA_OLD)
+    if n != 1:
+        sys.exit(f"[make_legacy] 錯誤：頂層 await 那兩行應該剛好 1 處，實際 {n} 處（引擎改版了，要重新確認）")
+    text = text.replace(TLA_OLD, TLA_NEW)
 
     tmp_in = out_path.with_suffix(".pre.js")
     tmp_out = out_path.with_suffix(".esb.js")

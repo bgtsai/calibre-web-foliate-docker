@@ -48,5 +48,5 @@ COPY build/patch_read_html.py build/error_panel.html /tmp/cwfm-build/
 # linuxserver 的 image 若沒有把 python3 放進 PATH，改用它內建的 venv
 RUN set -eu; \
     PY=$(command -v python3 || echo /lsiopy/bin/python3); \
-    "$PY" /tmp/cwfm-build/patch_read_html.py /app/calibre-web/cps/templates/read.html "$(echo "${CWFM_MOD_REF}" | cut -c1-7)-legacy1-chk${CWFM_CHECKPOINTS}"; \
+    "$PY" /tmp/cwfm-build/patch_read_html.py /app/calibre-web/cps/templates/read.html "$(echo "${CWFM_MOD_REF}" | cut -c1-7)-legacy2-chk${CWFM_CHECKPOINTS}"; \
     rm -rf /tmp/cwfm-build

@@ -4,6 +4,7 @@
 // 只檢查「整支程式會因此拒絕執行」的那一類（解析期錯誤）：
 //   - class 裡的 static { } 區塊（Safari 16.4）
 //   - 正規表示式字面值裡的往回比對 (?<= / (?<!（Safari 16.4）
+//   - 頂層 await：Safari 15 語法上支援，但 iOS 15.3 實機用檢查點定位到執行這裡時整頁當掉
 // 用語法樹找，不用文字搜尋：文字搜尋會把字串、註解裡碰巧出現的同樣字樣也算進去。
 import fs from 'node:fs';
 import * as acorn from 'acorn';
@@ -13,6 +14,11 @@ const file = process.argv[2];
 const src = fs.readFileSync(file, 'utf8');
 const ast = acorn.parse(src, { ecmaVersion: 2022, sourceType: 'module', locations: true });
 const problems = [];
+walk.ancestor(ast, {
+    AwaitExpression(node, ancestors) {
+        if (!ancestors.some((a) => /Function/.test(a.type))) problems.push(`第 ${node.loc.start.line} 行：頂層 await`);
+    },
+});
 walk.full(ast, (node) => {
     if (node.type === 'StaticBlock') problems.push(`第 ${node.loc.start.line} 行：class static 區塊`);
     if (node.type === 'Literal' && node.regex && /\(\?<[=!]/.test(node.regex.pattern)) {
@@ -31,4 +37,4 @@ if (problems.length) {
     console.error('[check_output] 錯誤：仍有 Safari 15 不支援的語法：\n  ' + problems.join('\n  '));
     process.exit(1);
 }
-console.log('[check_output] OK：沒有 static 區塊、沒有往回比對');
+console.log('[check_output] OK：沒有 static 區塊、往回比對、頂層 await');
