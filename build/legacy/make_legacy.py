@@ -9,7 +9,11 @@
    不壓縮、保留排版：iPad 錯誤面板回報的行號，要能在這邊重現同一份檔案後對回原始碼
 3. check_output.mjs 用語法樹確認沒有殘留 Safari 15 看不懂的語法
 4. 最前面接上 polyfills.js（缺少的內建函式代用品）
+
+【診斷用】環境變數 CWFM_CHECKPOINTS=1 時，在第 3 步之後插入檢查點
+（add_checkpoints.mjs），用來找 iOS 15 載入時引擎當掉的位置。找到原因後移除。
 """
+import os
 import pathlib
 import subprocess
 import sys
@@ -49,6 +53,8 @@ def main(argv):
     run([str(nm / ".bin" / "esbuild"), str(tmp_in), "--format=esm", "--target=safari15",
          "--charset=utf8", "--log-level=warning", f"--outfile={tmp_out}"], "esbuild 轉譯")
     run(["node", str(HERE / "check_output.mjs"), str(tmp_out)], "語法檢查")
+    if os.environ.get("CWFM_CHECKPOINTS") == "1":
+        run(["node", str(HERE / "add_checkpoints.mjs"), str(tmp_out), str(tmp_out)], "插入檢查點")
 
     poly = (HERE / "polyfills.js").read_text(encoding="utf-8")
     out_path.write_text(poly + "\n" + tmp_out.read_text(encoding="utf-8"), encoding="utf-8")

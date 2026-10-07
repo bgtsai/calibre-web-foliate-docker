@@ -58,7 +58,8 @@
 
         function allText() {
             var prev = lastSession;
-            return 'cwfm 錯誤紀錄\n\n' + '== 這一次 ==\n' + header() + '\n' + entries.join('\n\n') +
+            return 'cwfm 錯誤紀錄\n\n' +
+                (lastChk ? '最後通過的檢查點：第 ' + lastChk + ' 行（上一次）\n\n' : '') + '== 這一次 ==\n' + header() + '\n' + entries.join('\n\n') +
                 (dropped ? '\n\n（另有 ' + dropped + ' 筆超過上限未記錄）' : '') +
                 '\n\n' + (prev ? prev.replace('== 這一次 ==', '== 上一次（開頁面之前留下的）==') : '（沒有上一次的紀錄）');
         }
@@ -137,6 +138,12 @@
 
         // 在寫入這一次的任何紀錄之前，先讀出上一次留下的。
         var lastSession = load(KEY);
+
+        // 【診斷用】建置時開了檢查點（CWFM_CHECKPOINTS=1）才會被呼叫：主程式每跑完一個
+        // 頂層敘述就記下它的行號。引擎直接當掉時沒有錯誤訊息，最後一個行號就是線索。
+        var lastChk = load('cwfm-chk');
+        if (!SAFE) { try { localStorage.removeItem('cwfm-chk'); } catch (e) {} }
+        window.__cwfmChk = function (line) { store('cwfm-chk', String(line)); };
         step(SAFE ? '安全模式：不載入閱讀器' : '頁面開始載入（錯誤面板就緒）');
 
         // 程式錯誤（含主程式語法看不懂而整支被拒絕的情況）。
