@@ -38,11 +38,14 @@ jobs:
       build: ${{ steps.chk.outputs.build }}
       digest: ${{ steps.chk.outputs.digest }}
       version: ${{ steps.chk.outputs.version }}
+      trigger_time: ${{ steps.chk.outputs.trigger_time }}
     steps:
       - uses: actions/checkout@v4
       - id: chk
         run: |
           set -eu
+          # 觸發時間只在這裡算一次，RSS 標題用這個（台北時間）
+          echo "trigger_time=$(TZ=Asia/Taipei date +'%Y-%m-%dT%H:%M:%S+08:00')" >> "$GITHUB_OUTPUT"
           IMG=lscr.io/linuxserver/calibre-web:latest
           DIGEST=""
           for i in 1 2 3; do
@@ -131,3 +134,92 @@ jobs:
             echo "推送衝突，重試中（第 $i 次）..."; sleep $((RANDOM % 5 + 1))
           done
           echo "::error::版本記錄推送失敗"; exit 1
+
+  # ── 每次執行都寫一則狀態 RSS（build_status.xml），格式比照 browser-tools/route-rain ──
+  report:
+    needs: [check-upstream, build-and-push]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+      checks: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 組出本次狀態並寫入 RSS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHECK_RESULT: ${{ needs.check-upstream.result }}
+          BUILD_RESULT: ${{ needs.build-and-push.result }}
+          EVENT: ${{ github.event_name }}
+          TRIGGER_TIME: ${{ needs.check-upstream.outputs.trigger_time }}
+          NEW_VERSION: ${{ needs.check-upstream.outputs.version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -u
+          git pull -q origin main || true
+          [ -n "$TRIGGER_TIME" ] || TRIGGER_TIME=$(TZ=Asia/Taipei date +'%Y-%m-%dT%H:%M:%S+08:00')
+          T_HM=$(TZ=Asia/Taipei date -d "$TRIGGER_TIME" +'%H:%M')
+          T_DATE=$(TZ=Asia/Taipei date -d "$TRIGGER_TIME" +'%Y.%m.%d')
+          # 「Linuxserver.io version:- 0.6.27-ls404 Build-date:- 2026-10-04T05:49:48+00:00」→「0.6.27-ls404（2026-10-04 發布）」
+          fmt() { echo "$1" | sed -nE 's/.*version:- *([^ ]+).*Build-date:- *([0-9-]{10}).*/\1（\2 發布）/p'; }
+          OLD_RAW=$(git show "${{ github.sha }}:.state/upstream_version.txt" 2>/dev/null || true)
+          NEW=$(fmt "$NEW_VERSION"); OLD=$(fmt "$OLD_RAW")
+          OLD_SHORT=${OLD%%（*}; NEW_SHORT=${NEW%%（*}
+          REF=$(sed -n 's/^ARG CWFM_MOD_REF=//p' Dockerfile)
+          MODVER=$(curl -s --max-time 30 "https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/${REF}/calibre-web-foliate-mod.user.js" | head -5 | sed -n 's#^// @version *##p')
+          READER="mod v${MODVER:-?}（${REF:0:7}）"
+          if [ "$EVENT" = "schedule" ]; then WHY="上游有新版"; else WHY="${EVENT} 觸發"; fi
+
+          # 失敗時抓出失敗的步驟與錯誤訊息
+          fail_detail() {
+            JOBS=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" 2>/dev/null || echo '{}')
+            STEP=$(echo "$JOBS" | jq -r '[.jobs[]? | select(.conclusion=="failure") | .name + "／" + ([.steps[]? | select(.conclusion=="failure") | .name] | join("、"))] | join("；")')
+            MSG=""
+            for id in $(echo "$JOBS" | jq -r '.jobs[]? | select(.conclusion=="failure") | .id'); do
+              MSG="$MSG$(gh api "repos/${{ github.repository }}/check-runs/$id/annotations" --jq '[.[] | select(.annotation_level=="failure") | .message] | join(" / ")' 2>/dev/null | head -c 400)"
+            done
+            echo "【失敗步驟】${STEP:-（無法取得）}"
+            echo "【錯誤訊息】${MSG:-（無法取得，請看執行紀錄）}"
+            echo "【執行紀錄】$RUN_URL"
+          }
+
+          if [ "$CHECK_RESULT" != "success" ]; then
+            TITLE="🔴 ${T_HM} ${T_DATE}｜檢查失敗"
+            DESC=$(printf '%s\n%s\n' "【摘要】讀取上游版本失敗，本次未建置" "$(fail_detail)")
+          elif [ "$BUILD_RESULT" = "skipped" ]; then
+            TITLE="🟢 ${T_HM} ${T_DATE}｜上游無更新"
+            DESC=$(printf '%s\n' "【摘要】上游 linuxserver/calibre-web 沒有新版，本次不建置" "【上游版本】${NEW:-$NEW_VERSION}" "【閱讀器版本】${READER}")
+          elif [ "$BUILD_RESULT" = "success" ]; then
+            TITLE="🔵 ${T_HM} ${T_DATE}｜已更新建置"
+            if [ -n "$OLD_SHORT" ] && [ "$OLD_SHORT" != "$NEW_SHORT" ]; then UP="${OLD_SHORT} → ${NEW}"; else UP="${NEW:-$NEW_VERSION}"; fi
+            DESC=$(printf '%s\n' "【摘要】${WHY}，已重新建置並推送 image" "【上游版本】${UP}" "【閱讀器版本】${READER}" "【image】ghcr.io/${{ github.repository }}:latest")
+          else
+            TITLE="🔴 ${T_HM} ${T_DATE}｜建置失敗"
+            if [ -n "$OLD_SHORT" ] && [ "$OLD_SHORT" != "$NEW_SHORT" ]; then UP="${OLD_SHORT} → ${NEW}"; else UP="${NEW:-$NEW_VERSION}"; fi
+            DESC=$(printf '%s\n%s\n%s\n' "【摘要】${WHY}，但建置失敗，image 維持上一版" "【上游版本】${UP}" "【閱讀器版本】${READER}"; fail_detail)
+          fi
+          echo "$TITLE"; echo "$DESC"
+
+          write_rss() {
+            RSS_FILE=build_status.xml CHANNEL_TITLE="Calibre-Web Foliate Docker 建置狀態" \
+            CHANNEL_DESC="每日檢查上游 linuxserver/calibre-web 並自動建置的執行紀錄" \
+            CHANNEL_LINK="https://github.com/${{ github.repository }}" \
+            ITEM_TITLE="$TITLE" ITEM_DESC="$DESC" ITEM_GUID="cwfm-docker-${{ github.run_id }}-${{ github.run_attempt }}" \
+            python3 .github/scripts/rss_append.py
+            git add build_status.xml
+            git commit -q -m "建置狀態 RSS：${TITLE}"
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          write_rss
+          for i in 1 2 3 4 5; do
+            git push -q origin HEAD:main && exit 0
+            echo "推送衝突，重試中（第 $i 次）..."; sleep $((RANDOM % 5 + 1))
+            # 兩邊都改了同一份 RSS：捨棄本地這次，拉最新後重新寫入
+            git fetch -q origin main && git reset -q --hard origin/main && write_rss
+          done
+          echo "::error::狀態 RSS 推送失敗"; exit 1
