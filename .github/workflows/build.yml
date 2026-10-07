@@ -172,7 +172,7 @@ jobs:
           REF=$(sed -n 's/^ARG CWFM_MOD_REF=//p' Dockerfile)
           MODVER=$(curl -s --max-time 30 "https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-mod/${REF}/calibre-web-foliate-mod.user.js" | head -5 | sed -n 's#^// @version *##p')
           READER="mod v${MODVER:-?}（${REF:0:7}）"
-          if [ "$EVENT" = "schedule" ]; then WHY="上游有新版"; else WHY="${EVENT} 觸發"; fi
+          case "$EVENT" in schedule) WHY="上游有新版";; push) WHY="推送觸發";; *) WHY="手動觸發";; esac
 
           # 失敗時抓出失敗的步驟與錯誤訊息
           fail_detail() {
@@ -180,7 +180,9 @@ jobs:
             STEP=$(echo "$JOBS" | jq -r '[.jobs[]? | select(.conclusion=="failure") | .name + "／" + ([.steps[]? | select(.conclusion=="failure") | .name] | join("、"))] | join("；")')
             MSG=""
             for id in $(echo "$JOBS" | jq -r '.jobs[]? | select(.conclusion=="failure") | .id'); do
-              MSG="$MSG$(gh api "repos/${{ github.repository }}/check-runs/$id/annotations" --jq '[.[] | select(.annotation_level=="failure") | .message] | join(" / ")' 2>/dev/null | head -c 400)"
+              # 先找我們自己建置腳本印出的錯誤（在 docker 建置裡，GitHub 不會轉成註記）
+              MSG="$MSG$(gh api "repos/${{ github.repository }}/actions/jobs/$id/logs" 2>/dev/null | grep -oE '\[(patch_read_html|make_legacy|check_output|make_reader)\][^"]*錯誤.*' | head -3 | cut -c1-300 | paste -sd' ' -)"
+              [ -n "$MSG" ] || MSG="$MSG$(gh api "repos/${{ github.repository }}/check-runs/$id/annotations" --jq '[.[] | select(.annotation_level=="failure") | .message] | join(" / ")' 2>/dev/null | head -c 400)"
             done
             echo "【失敗步驟】${STEP:-（無法取得）}"
             echo "【錯誤訊息】${MSG:-（無法取得，請看執行紀錄）}"
