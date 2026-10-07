@@ -9,16 +9,69 @@ on:
       - 'build/**'
       - '.github/workflows/build.yml'
   workflow_dispatch:
+    inputs:
+      check_only:
+        description: '比照排程：只有上游有新版才建置（不勾＝強制建置）'
+        type: boolean
+        default: false
+  # 每天台灣時間中午 12:00（UTC 04:00）檢查上游 linuxserver/calibre-web 有沒有新版，
+  # 有才重新建置。GitHub 排程尖峰時可能延遲數分鐘到數十分鐘。
+  schedule:
+    - cron: '0 4 * * *'
+
+concurrency:
+  group: build-image
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  # ── 決定要不要建置：排程觸發時比對上游 image digest，推送/手動觸發一律建置 ──
+  check-upstream:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
+    outputs:
+      build: ${{ steps.chk.outputs.build }}
+      digest: ${{ steps.chk.outputs.digest }}
+      version: ${{ steps.chk.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: chk
+        run: |
+          set -eu
+          IMG=lscr.io/linuxserver/calibre-web:latest
+          DIGEST=""
+          for i in 1 2 3; do
+            DIGEST=$(docker buildx imagetools inspect "$IMG" --format '{{json .Manifest.Digest}}' | tr -d '"') && [ -n "$DIGEST" ] && break
+            echo "讀取上游 digest 第 $i 次失敗，重試..."; sleep 10
+          done
+          [ -n "$DIGEST" ] || { echo "::error::讀不到上游 image digest"; exit 1; }
+          VERSION=$(docker buildx imagetools inspect "$IMG" --format '{{json .Image}}' \
+            | jq -r '(."linux/amd64" // .).config.Labels["build_version"] // empty' 2>/dev/null || true)
+          RECORDED=$(cat .state/upstream_digest.txt 2>/dev/null || echo "")
+          echo "上游：$DIGEST（$VERSION）；上次建置：${RECORDED:-無}"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ github.event_name == 'workflow_dispatch' && inputs.check_only == true }}" != "true" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          elif [ "$DIGEST" != "$RECORDED" ]; then
+            echo "上游有新版，開始建置"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "上游沒有更新，跳過"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push:
+    needs: check-upstream
+    if: needs.check-upstream.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
       packages: write
 
     steps:
@@ -49,6 +102,7 @@ jobs:
         with:
           context: .
           push: true
+          pull: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -56,3 +110,24 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VERSION=${{ github.sha }}
+
+      # 建置成功才記錄這次用的上游版本；失敗不記錄，隔天排程會再試
+      - name: 記錄上游版本
+        env:
+          DIGEST: ${{ needs.check-upstream.outputs.digest }}
+          VERSION: ${{ needs.check-upstream.outputs.version }}
+        run: |
+          set -eu
+          mkdir -p .state
+          [ "$(cat .state/upstream_digest.txt 2>/dev/null || true)" = "$DIGEST" ] && { echo "版本記錄未變"; exit 0; }
+          echo "$DIGEST" > .state/upstream_digest.txt
+          echo "$VERSION" > .state/upstream_version.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .state
+          git commit -m "記錄上游 calibre-web 版本：${VERSION:-$DIGEST}（$(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M') 台北時間）"
+          for i in 1 2 3 4 5; do
+            git pull --rebase -q origin main && git push origin HEAD:main && exit 0
+            echo "推送衝突，重試中（第 $i 次）..."; sleep $((RANDOM % 5 + 1))
+          done
+          echo "::error::版本記錄推送失敗"; exit 1
