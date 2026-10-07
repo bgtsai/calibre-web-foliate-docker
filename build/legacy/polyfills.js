@@ -73,4 +73,23 @@
         if (!this.has(k)) this.set(k, fn(k));
         return this.get(k);
     });
+
+    // 全螢幕：iPadOS 16.4 以前只有 webkit 前綴版（webkitRequestFullscreen 等），閱讀器
+    // 用的是標準寫法，按全螢幕鈕會因為函式不存在而沒反應（iPad 實機回報）。
+    // 只在「沒有標準版、但有 webkit 版」時才對應過去，兩者都有的瀏覽器完全不動，
+    // 避免 fullscreenchange 事件被觸發兩次。iPhone 的 Safari 本來就不支援網頁元素全螢幕。
+    var doc = typeof document !== 'undefined' ? document : null;
+    if (doc && typeof doc.exitFullscreen !== 'function' && typeof doc.webkitExitFullscreen === 'function') {
+        Object.defineProperty(doc, 'fullscreenElement', {
+            get: function () { return doc.webkitFullscreenElement || null; }, configurable: true
+        });
+        Object.defineProperty(doc, 'fullscreenEnabled', {
+            get: function () { return !!doc.webkitFullscreenEnabled; }, configurable: true
+        });
+        doc.exitFullscreen = function () { doc.webkitExitFullscreen(); return Promise.resolve(); };
+        if (typeof Element.prototype.requestFullscreen !== 'function' && typeof Element.prototype.webkitRequestFullscreen === 'function') {
+            def(Element.prototype, 'requestFullscreen', function () { this.webkitRequestFullscreen(); return Promise.resolve(); });
+        }
+        doc.addEventListener('webkitfullscreenchange', function () { doc.dispatchEvent(new Event('fullscreenchange')); });
+    }
 })();
