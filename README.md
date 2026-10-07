@@ -2,16 +2,69 @@
 
 **English** | [繁體中文](README.zh.md)
 
-A Docker image that replaces [Calibre-Web](https://github.com/janeczku/calibre-web)'s built-in epub.js reader with [foliate-js](https://github.com/johnfactotum/foliate-js). No Tampermonkey required.
+A Docker image of [Calibre-Web](https://github.com/janeczku/calibre-web) with its built-in epub.js reader replaced by a [foliate-js](https://github.com/johnfactotum/foliate-js) reader. It is the server-side version of the [calibre-web-foliate-mod](https://github.com/bgtsai/calibre-web-foliate-mod) Tampermonkey userscript: the same reader, built straight into Calibre-Web, so **no browser extension is needed** — every device that opens an EPUB on your Calibre-Web (desktop, phone or tablet, including iPhone and iPad) gets the new reader automatically. The interface supports Traditional Chinese and English.
+
+![Settings panel (English)](docs/screenshot_en.png)
+
+## Why this exists
+
+Calibre-Web's built-in epub.js reader has limited typography controls (font size, letter spacing, line spacing, and margins are either missing or imprecise), and its interface can't be customized. foliate-js offers much finer typography control and deep visual customization. The userscript version swaps the reader in the browser, but needs Tampermonkey — which isn't available on iOS. This image does the swap on the server instead, while keeping Calibre-Web's existing bookmark sync and reading-progress mechanisms intact, so your usual workflow stays the same; only the rendering engine and interface change.
 
 ## Features
 
-- EPUB rendering with foliate-js, with multi-column layout and precise page-turn positioning
-- Full settings panel: font, font size, line spacing, letter spacing, color themes, page-turn animation, and more
-- Custom font upload (stored in IndexedDB)
-- Reading progress saved automatically (localStorage, persistent per origin)
-- Bilingual interface (Traditional Chinese / English, auto-detected or set manually)
-- All other Calibre-Web features unaffected (library, bookmarks, user management, etc.)
+### Typography
+
+- **Font size**: adjustable from 70% to 300%.
+- **Letter spacing**: adjustable from −0.05em to 0.5em.
+- **Line spacing**: adjustable from 1× to 5×.
+- **Justification**: toggle full justification on or off.
+- **Auto-hyphenation**: toggle automatic hyphenation on or off.
+- **Disable ligatures**: turn off OpenType ligature substitution. Useful when a font uses the ligature mechanism for advanced purposes such as glyph-level character mapping (common in fonts that implement display-layer script conversion, e.g. simplified-to-traditional Chinese). When letter spacing is applied, such fonts may show uneven spacing within certain word groups; enabling this option normalizes spacing at the cost of disabling those substitutions.
+
+> [!NOTE]
+> If you notice certain words or character groups appearing noticeably tighter than the surrounding text when using a custom letter spacing, try enabling **Disable Ligatures**. This is most commonly seen with fonts that perform glyph substitution for script conversion.
+
+> [!TIP]
+> Every numeric field can be typed into directly or adjusted with the **− / +** buttons on either side (hold to repeat). After clicking a slider or number box to focus it, you can also fine-tune with the arrow keys or the mouse wheel: ↑→ / ↓← on sliders, ↑ / ↓ in number boxes. The step follows the decimal places of the current value (e.g. line spacing 1.25 steps by 0.01), but is never coarser than the field's own minimum step.
+
+### Layout
+
+- **Page flow**: switch between Paginated and Scroll mode.
+- **Horizontal mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content width). In Content Priority mode, set the target content width in pixels; the margin absorbs any leftover space, keeping content width consistent when toggling fullscreen.
+- **Vertical mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content height), with the same logic as horizontal mode.
+- **Column control**: set the maximum number of columns and the gap between them in paginated mode. Both settings are automatically disabled in scroll mode (locked to 1 column).
+
+### Themes and colors
+
+- **Themes**: save your current typography, layout and color settings as a named theme and switch between them in one click. Themes can be reordered by drag-and-drop, and an existing theme can be overwritten with your current settings.
+- **Apply Colors**: five built-in color presets (Follow System, Light, Dark, Sepia, Old Gold) plus any color schemes you save. Clicking a preset fills its colors into the custom text and background color fields and turns both on; the preset stays highlighted until you change a color or toggle a field yourself. While **Follow System** is highlighted, the colors are refilled automatically whenever your system switches between light and dark mode.
+- **Custom colors**: text and background colors each have their own on/off switch — on applies the color you set, off keeps the book's own color. Colors can be entered in HEX / RGB / HSV format or chosen with the built-in color picker. **+ Save Current Color Scheme** stores the current pair; saved schemes can be renamed and reordered by drag-and-drop.
+- **Toolbar and panels follow the page**: the toolbar, settings panel and table of contents switch between light and dark based on the actual background color of the page you're reading.
+
+### Fonts
+
+- Manually enter the name of a font already installed on your system, or upload a font file (.ttf / .otf / .woff) to embed it directly. Font files are stored in the browser's IndexedDB and persist across sessions. The font list supports drag-and-drop reordering.
+
+### Page-turn shortcuts
+
+- Fully customizable keyboard shortcuts for previous/next page. Multiple key combinations can be recorded per direction.
+- **Page-flip debounce**: set a minimum interval (in milliseconds) between consecutive page-turn triggers from the same shortcut, to prevent accidental double-flips.
+- Pages can also be turned with the **mouse wheel** (over the page, or over the progress bar at the bottom).
+- While the settings panel is open, page-turn shortcuts and wheel paging are paused so the arrow keys and wheel can adjust values instead; shortcuts keep working while the table of contents is open.
+
+### Reading behavior
+
+- **Precise page alignment** (experimental, off by default): after toggling fullscreen, resizing the window or changing typography settings, the **first character** of the page you were on stays exactly at the top of the new layout, and paging forward or back continues from there. Jumping via the table of contents, a link or the progress bar restores the chapter's normal pagination. Automatically disabled in scroll mode.
+- **Local reading progress**: reading position is saved locally on every page turn. On reopening a book, the reader restores the last position automatically.
+- **Auto-sync to server**: optionally sync the local reading position back to Calibre-Web's server-side bookmark after a configurable idle period. Can also be triggered manually.
+- **Auto-hide cursor**: the cursor hides automatically after a configurable number of seconds of inactivity, and reappears on mouse movement.
+- **Auto-hide toolbar**: the toolbar and progress bar slide out of view after a few seconds of inactivity and reappear on hover or click.
+- **Left/right tap zones**: clickable zones on the left and right edges of the screen for previous/next page navigation. The zone can be enabled (click-to-page) independently of its visual hint (whether the zone boundary is visible). Zone width is configurable in pixels. Automatically disabled in scroll mode.
+- **Page-turn animation**: a brief directional chevron animation plays at the tap zone position on each page turn, confirming the direction. Color is configurable (or follows the current theme automatically). Automatically disabled when the tap-zone visual hint is on.
+
+### Interface
+
+- **Language**: defaults to Traditional Chinese or English based on your browser's preferred language for web content. Can be manually set to either language; a page reload is required for the change to take effect.
 
 ## Quick start
 
@@ -32,7 +85,24 @@ services:
     restart: unless-stopped
 ```
 
-## Differences from upstream
+It is based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) and used the same way: if you already run that image, just replace the `image:` line — config and library paths stay the same. Then open any EPUB in Calibre-Web and click the gear icon in the top-right corner to open the settings panel.
+
+## Differences from the userscript version
+
+The reader is built from the userscript's source at a pinned version, so the features are the same. The differences:
+
+- **Settings are stored per browser and per address.** Settings live in the browser's `localStorage` (uploaded fonts in IndexedDB) instead of Tampermonkey storage. Browsers keep these separately for each address, so opening the same Calibre-Web through two different addresses (e.g. a LAN IP and a domain name) gives you two independent sets of settings. Clearing the browser's site data clears them too.
+- **Works on older iPhone / iPad.** The reader is converted at build time so that iOS 15's Safari can run it, with missing built-in functions filled in. Some newer functions used only for PDF are not filled in, so opening PDFs on older iOS may fail.
+- **Error panel.** When an error occurs on the reader page, a red "⚠ count" button appears in the bottom-left corner. Tap it to see the error list and copy it in one click — handy for reporting problems from devices without developer tools. If the reader page crashes outright, add `?cwfm=safe` to the reader address: the page then skips loading the reader and shows the error log from the previous attempt.
+
+## Interface language not as expected?
+
+The interface defaults to Traditional Chinese or English based on your browser's reported "preferred language for web content" — if it starts with `zh`, Chinese is shown; otherwise English. This setting is independent of your browser's own UI language (menus, buttons, etc.) — a browser with a Chinese interface doesn't necessarily report Chinese as the preferred web content language. If the auto-detected result isn't what you want, you can:
+
+- Go to the "語言 / Language" section at the bottom of the settings panel and manually set the display language (a page reload is required for the change to take effect); or
+- Adjust your browser's "preferred language for web content" setting (in Firefox: Settings → General → Language → Choose your preferred language for displaying pages, and move Traditional Chinese to the top of the list).
+
+## How it works
 
 The reader code is not duplicated here. When the image is built, it is assembled directly from a pinned commit of [calibre-web-foliate-mod](https://github.com/bgtsai/calibre-web-foliate-mod) (`CWFM_MOD_REF` in the `Dockerfile`):
 
@@ -41,9 +111,7 @@ The reader code is not duplicated here. When the image is built, it is assembled
 | `cps/static/js/cwfm/cwfm-reader.js` | foliate-js engine + reader interface, generated from the mod source by `build/make_reader.py` |
 | `cps/templates/read.html` | Patched in place by `build/patch_read_html.py`: the old epub.js reader's scripts and styles are removed and the script above is added; the rest of the page is kept |
 
-Compatibility: at build time, `cwfm-reader.js` is transpiled with esbuild into syntax that older Safari (iOS 15) can run, and missing built-in functions are polyfilled (`build/legacy/`). Some newer functions used only for PDF are not polyfilled, so opening PDFs on older iOS may fail.
-
-Error panel: when an error occurs on the reader page, a red "⚠ count" button appears in the bottom-left corner. Tap it to see the error list and copy it in one click — handy for reporting problems from devices without developer tools, such as an iPad (`build/error_panel.html`).
+The patch only changes the files in the table: the rest of Calibre-Web (server, other pages, library, bookmarks, users) is untouched. Before writing anything, the patch checks that every anchor it relies on in `read.html` is present exactly once; if an upstream release changes that page, the build stops with an error and the previous image stays in place instead of producing a broken page. The iOS 15 conversion lives in `build/legacy/`, the error panel in `build/error_panel.html`.
 
 The old reader's files remain in the image (other pages may use them); the EPUB reader page simply no longer loads them.
 
@@ -56,10 +124,6 @@ The image is rebuilt automatically when the upstream `linuxserver/calibre-web` i
 https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-docker/main/build_status.xml
 
 🟢 no upstream update · 🔵 rebuilt and pushed · 🔴 failed (the previous image stays in place).
-
-## Settings storage
-
-The Tampermonkey version stores settings across domains with `GM_setValue`; the Docker version uses `localStorage` instead (same-origin, i.e. the domain Calibre-Web is served from). Clearing browser data clears the settings too — a known trade-off.
 
 ## License
 
