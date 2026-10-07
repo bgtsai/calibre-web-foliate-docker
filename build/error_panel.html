@@ -3,32 +3,65 @@
     /* 錯誤面板：把頁面上發生的錯誤直接顯示在畫面上，給沒有開發者工具的裝置（iPad）用。
      * 刻意放在 <head> 最前面、跟閱讀器主程式分開，而且只用最舊的語法（ES5）：
      * 主程式如果因為瀏覽器看不懂語法而整支不執行，這段仍然要能跑，才收得到那個錯誤。
-     * 有錯誤時左下角出現「⚠ 數量」小按鈕，點開看清單，可一鍵複製全部文字。 */
+     *
+     * 頁面當掉（iOS「重複發生問題」）時畫面上的東西會全部消失，所以：
+     * - 每筆紀錄當下就同步寫進 localStorage（cwfm-errlog），當掉也留得住
+     * - 每次開頁面先記住上一次留下的紀錄（顯示在面板下半部），再開始新的一輪
+     * - 記錄「進度足跡」（step）與每 2 秒一次的心跳，看最後一筆就知道死在哪一段
+     * - 網址加 ?cwfm=safe：不載入閱讀器，直接打開面板顯示上一次的紀錄，可複製
+     *
+     * 面板自己不能拖垮頁面：最多記 MAX_ENTRIES 筆，畫面最多每秒重畫一次。
+     * （第一版每筆都立刻整份重畫、沒有上限，錯誤若在迴圈裡大量發生，面板本身
+     * 就可能把記憶體吃光。） */
     (function () {
         var T0 = Date.now();
+        var MAX_ENTRIES = 50;
+        var KEY = 'cwfm-errlog';
+        var SAFE = /[?&]cwfm=safe\b/.test(location.search);
+        window.__cwfmSafeMode = SAFE;
         var entries = [];
-        var badge = null, panel = null, list = null;
+        var errorCount = 0, dropped = 0;
+        var badge = null, panel = null, list = null, renderTimer = null;
+
+        function store(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* 存不了也不能影響頁面 */ } }
+        function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 
         function short(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; }
         function stackOf(e) {
             if (!e || !e.stack) return '';
             return '\n    ' + String(e.stack).split('\n').slice(0, 6).join('\n    ');
         }
-        function add(kind, text) {
-            entries.push('#' + (entries.length + 1) + ' +' + ((Date.now() - T0) / 1000).toFixed(2) + 's [' + kind + '] ' + text);
-            render();
-        }
         function header() {
-            return 'cwfm 錯誤紀錄\n' +
-                '時間：' + new Date().toString() + '\n' +
+            var s = document.querySelector('script[src*="cwfm-reader.js"]');
+            return '時間：' + new Date(T0).toString() + '\n' +
                 '網址：' + location.href + '\n' +
                 '瀏覽器：' + navigator.userAgent + '\n' +
-                '閱讀器檔案：' + (function () {
-                    var s = document.querySelector('script[src*="cwfm-reader.js"]');
-                    return s ? s.getAttribute('src') : '（尚未載入）';
-                })() + '\n';
+                '閱讀器檔案：' + (s ? s.getAttribute('src') : (SAFE ? '（安全模式，未載入）' : '（尚未載入）')) + '\n';
         }
-        function allText() { return header() + '\n' + entries.join('\n\n'); }
+        // 安全模式不寫入：寫了就會把要看的「上一次」紀錄蓋掉
+        function persist() { if (!SAFE) store(KEY, '== 這一次 ==\n' + header() + '\n' + entries.join('\n\n')); }
+
+        function add(kind, text) {
+            if (kind !== 'step' && kind !== 'alive') errorCount++;
+            var replaceAlive = kind === 'alive' && entries.length && entries[entries.length - 1].indexOf('[alive]') > 0;
+            if (!replaceAlive && entries.length >= MAX_ENTRIES) { dropped++; return; }
+            var line = '#' + (replaceAlive ? entries.length : entries.length + 1) + ' +' + ((Date.now() - T0) / 1000).toFixed(2) + 's [' + kind + '] ' + text;
+            if (replaceAlive) {
+                entries[entries.length - 1] = line;   // 心跳只保留最新一筆，不佔名額
+            } else {
+                entries.push(line);
+            }
+            persist();
+            scheduleRender();
+        }
+        function step(text) { add('step', text); }
+
+        function allText() {
+            var prev = lastSession;
+            return 'cwfm 錯誤紀錄\n\n' + '== 這一次 ==\n' + header() + '\n' + entries.join('\n\n') +
+                (dropped ? '\n\n（另有 ' + dropped + ' 筆超過上限未記錄）' : '') +
+                '\n\n' + (prev ? prev.replace('== 這一次 ==', '== 上一次（開頁面之前留下的）==') : '（沒有上一次的紀錄）');
+        }
 
         function ensureUi() {
             if (badge || !document.body) return;
@@ -37,7 +70,7 @@
             badge.setAttribute('style', 'position:fixed;left:8px;bottom:8px;z-index:2147483647;' +
                 'padding:6px 10px;border:0;border-radius:6px;background:#c62828;color:#fff;' +
                 'font:bold 14px/1.2 -apple-system,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4);');
-            badge.onclick = function () { panel.style.display = panel.style.display === 'none' ? 'flex' : 'none'; };
+            badge.onclick = function () { panel.style.display = panel.style.display === 'none' ? 'flex' : 'none'; renderNow(); };
 
             panel = document.createElement('div');
             panel.setAttribute('style', 'position:fixed;left:8px;right:8px;bottom:48px;max-height:70vh;' +
@@ -64,13 +97,17 @@
             panel.appendChild(list);
             document.body.appendChild(panel);
             document.body.appendChild(badge);
+            if (SAFE) panel.style.display = 'flex';
         }
-        function render() {
+        function renderNow() {
+            renderTimer = null;
             ensureUi();
             if (!badge) return;
-            badge.textContent = '⚠ ' + entries.length;
-            list.textContent = allText();
+            badge.style.display = (errorCount || SAFE) ? '' : 'none';
+            badge.textContent = SAFE ? '安全模式' : '⚠ ' + errorCount;
+            if (panel.style.display !== 'none') list.textContent = allText();
         }
+        function scheduleRender() { if (!renderTimer) renderTimer = setTimeout(renderNow, 1000); }
 
         // http 網址（非 https）下 navigator.clipboard 不存在，改用選取文字 + execCommand；
         // 兩者都要在使用者點擊當下呼叫才有效，所以只放在按鈕事件裡。
@@ -98,6 +135,10 @@
             return ok;
         }
 
+        // 在寫入這一次的任何紀錄之前，先讀出上一次留下的。
+        var lastSession = load(KEY);
+        step(SAFE ? '安全模式：不載入閱讀器' : '頁面開始載入（錯誤面板就緒）');
+
         // 程式錯誤（含主程式語法看不懂而整支被拒絕的情況）。
         // 用 capture 階段才收得到；資源載入失敗（例如 404）沒有 message，略過。
         window.addEventListener('error', function (ev) {
@@ -121,12 +162,46 @@
             } catch (e) { /* 面板自己出錯不能影響原本的 console.error */ }
             return origError.apply(console, arguments);
         };
+
+        // ---- 進度足跡：只觀察、不改變行為 ----
+        // 主程式開始執行的證據：引擎註冊自訂元素
+        if (window.customElements && customElements.define) {
+            var origDefine = customElements.define;
+            customElements.define = function (name) {
+                step('註冊元件 ' + name);
+                return origDefine.apply(this, arguments);
+            };
+        }
+        // 下載書檔
+        if (window.fetch) {
+            var origFetch = window.fetch;
+            window.fetch = function (input) {
+                var url = typeof input === 'string' ? input : (input && input.url) || '';
+                var isBook = /\/show\/\d+\//.test(url);
+                if (isBook) step('開始下載書檔 ' + url);
+                var p = origFetch.apply(this, arguments);
+                if (isBook) p.then(function (r) {
+                    step('書檔回應 HTTP ' + r.status + '，大小 ' + (r.headers.get('content-length') || '?') + ' bytes');
+                }, function (e) { add('error', '書檔下載失敗 ' + short(e && e.message, 300)); });
+                return p;
+            };
+        }
+        // 閱讀器元件放進頁面
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.MutationObserver) return;
+            var mo = new MutationObserver(function () {
+                if (document.querySelector('foliate-view')) { mo.disconnect(); step('閱讀器元件已放進頁面'); }
+            });
+            mo.observe(document.body, { childList: true, subtree: true });
+        });
+        // 心跳：頁面還活著就每 2 秒更新一次，當掉後看最後一次心跳的時間
+        setInterval(function () { add('alive', '頁面仍在運作'); }, 2000);
         // 主程式沒有出錯訊息、卻也沒有啟動的情況（例如卡住），也要留下紀錄。
-        window.addEventListener('load', function () {
+        if (!SAFE) window.addEventListener('load', function () {
             setTimeout(function () {
                 if (!document.querySelector('foliate-view')) add('check', '頁面載入 15 秒後仍沒有出現閱讀器（foliate-view），主程式可能沒有執行');
             }, 15000);
         });
-        document.addEventListener('DOMContentLoaded', function () { if (entries.length) render(); });
+        document.addEventListener('DOMContentLoaded', renderNow);
     })();
     </script>

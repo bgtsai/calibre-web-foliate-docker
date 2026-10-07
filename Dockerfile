@@ -5,7 +5,7 @@
 # 要打包的 calibre-web-foliate-mod 版本（完整 commit SHA）。
 # 改這一行就是「升級閱讀器」；它同時是瀏覽器端的快取破壞參數，
 # 換版本後瀏覽器一定會重新下載，不會拿到舊檔。
-ARG CWFM_MOD_REF=11434c6097ac68ac22759eff41802ce6e386636d
+ARG CWFM_MOD_REF=f39b796eef03bdcdccb5a93af1942daa37a28fb6
 
 # ---- 第一階段：從 mod 原始碼組出 cwfm-reader.js ----
 # mod 的 src/app-ui.js 與 foliate-src/bundle.js 是唯一來源，這裡不另存副本，

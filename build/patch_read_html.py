@@ -64,9 +64,15 @@ BOOT = """    {marker}
                 console.error('[cwfm:storage] 寫入失敗', d.key, err);
             }}
         }});
+        // 安全模式（網址加 ?cwfm=safe）不載入閱讀器，只看錯誤面板留下的上一次紀錄。
+        if (!window.__cwfmSafeMode) {{
+            var s = document.createElement('script');
+            s.type = 'module';
+            s.src = "{{{{ url_for('static', filename='js/cwfm/cwfm-reader.js') }}}}?v={bust}";
+            document.body.appendChild(s);
+        }}
     }})();
     </script>
-    <script type="module" src="{{{{ url_for('static', filename='js/cwfm/cwfm-reader.js') }}}}?v={bust}"></script>
 """
 
 
