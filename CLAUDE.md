@@ -52,5 +52,11 @@ python3 test/run_test.py /tmp/p.html /tmp/r.js chromium   # 再跑 webkit、fire
 原版 `read.html` 取自 janeczku/calibre-web 對應版本的 `cps/templates/read.html`。
 已知：測試環境會出現一則 `[cwfm:align] Failed to lock initial anchor`，舊版也有，與功能無關。
 
+## 上游 Calibre-Web 自動更新
+- `build.yml` 每天台北時間 12:00（cron `0 4 * * *` UTC）比對 `lscr.io/linuxserver/calibre-web:latest` 的 digest
+  與 `.state/upstream_digest.txt`，不同才建置；建置成功才寫回記錄（`.state/` 不在觸發路徑內，不會連鎖觸發）。
+- 推送或手動觸發一律建置；手動觸發勾 `check_only` 可比照排程只在有新版時建置（用來測試偵測邏輯）。
+- 上游改版若讓 `patch_read_html.py` 對不上，建置會失敗、記錄不更新，隔天會再試——收到失敗通知時要去修 patch。
+
 ## 待辦
 - `Dockerfile` 的 `ARG CWFM_CHECKPOINTS=1` 是診斷 iOS 15 當機用的檢查點，iPad 確認穩定後改成 0（使用者同意後另一輪做）。
