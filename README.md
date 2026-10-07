@@ -1,19 +1,19 @@
 # calibre-web-foliate-docker
 
-[English](#english) | **繁體中文**
+**English** | [繁體中文](README.zh.md)
 
-以 [foliate-js](https://github.com/johnfactotum/foliate-js) 取代 [Calibre-Web](https://github.com/janeczku/calibre-web) 內建 epub.js 閱讀器的 Docker image。不需要安裝 Tampermonkey。
+A Docker image that replaces [Calibre-Web](https://github.com/janeczku/calibre-web)'s built-in epub.js reader with [foliate-js](https://github.com/johnfactotum/foliate-js). No Tampermonkey required.
 
-## 功能
+## Features
 
-- 以 foliate-js 渲染 EPUB，支援多欄版面、精準翻頁定位
-- 完整設定面板：字體、字級、行距、字距、色彩主題、翻頁動畫等
-- 自訂字體上傳（存入 IndexedDB）
-- 閱讀進度自動儲存（localStorage，同源持久）
-- 雙語介面（繁體中文 / English，自動偵測或手動切換）
-- 完整 Calibre-Web 功能不受影響（書庫、書籤、使用者管理等）
+- EPUB rendering with foliate-js, with multi-column layout and precise page-turn positioning
+- Full settings panel: font, font size, line spacing, letter spacing, color themes, page-turn animation, and more
+- Custom font upload (stored in IndexedDB)
+- Reading progress saved automatically (localStorage, persistent per origin)
+- Bilingual interface (Traditional Chinese / English, auto-detected or set manually)
+- All other Calibre-Web features unaffected (library, bookmarks, user management, etc.)
 
-## 快速開始
+## Quick start
 
 ```yaml
 services:
@@ -32,41 +32,29 @@ services:
     restart: unless-stopped
 ```
 
-## 與上游的差異
+## Differences from upstream
 
-閱讀器程式碼不另存副本，建置 image 時直接從 [calibre-web-foliate-mod](https://github.com/bgtsai/calibre-web-foliate-mod) 的指定 commit（`Dockerfile` 的 `CWFM_MOD_REF`）組裝：
+The reader code is not duplicated here. When the image is built, it is assembled directly from a pinned commit of [calibre-web-foliate-mod](https://github.com/bgtsai/calibre-web-foliate-mod) (`CWFM_MOD_REF` in the `Dockerfile`):
 
-| 檔案 | 說明 |
+| File | Description |
 |---|---|
-| `cps/static/js/cwfm/cwfm-reader.js` | foliate-js 引擎 + 閱讀器介面，由 `build/make_reader.py` 從 mod 原始碼產生 |
-| `cps/templates/read.html` | 由 `build/patch_read_html.py` 就地修改：移除舊 epub.js 閱讀器的腳本與樣式，加入上面這支程式；頁面其餘結構保留 |
+| `cps/static/js/cwfm/cwfm-reader.js` | foliate-js engine + reader interface, generated from the mod source by `build/make_reader.py` |
+| `cps/templates/read.html` | Patched in place by `build/patch_read_html.py`: the old epub.js reader's scripts and styles are removed and the script above is added; the rest of the page is kept |
 
-相容性：`cwfm-reader.js` 建置時會用 esbuild 轉譯成舊版 Safari（iOS 15）也能執行的語法，並補上缺少的內建函式（`build/legacy/`）。PDF 專用的部分新函式沒有補，舊版 iOS 開 PDF 可能出錯。
+Compatibility: at build time, `cwfm-reader.js` is transpiled with esbuild into syntax that older Safari (iOS 15) can run, and missing built-in functions are polyfilled (`build/legacy/`). Some newer functions used only for PDF are not polyfilled, so opening PDFs on older iOS may fail.
 
-錯誤面板：閱讀頁發生錯誤時，左下角會出現紅色「⚠ 數量」按鈕，點開可看到錯誤清單並一鍵複製，方便在沒有開發者工具的裝置（例如 iPad）上回報問題（`build/error_panel.html`）。
+Error panel: when an error occurs on the reader page, a red "⚠ count" button appears in the bottom-left corner. Tap it to see the error list and copy it in one click — handy for reporting problems from devices without developer tools, such as an iPad (`build/error_panel.html`).
 
-舊閱讀器的檔案本身仍留在 image 裡（其他頁面可能用到），只是 epub 閱讀頁不再載入。
+The old reader's files remain in the image (other pages may use them); the EPUB reader page simply no longer loads them.
 
-升級閱讀器：把 `Dockerfile` 的 `CWFM_MOD_REF` 改成 mod 新的 commit SHA 並推送即可。這個值同時當作瀏覽器快取破壞參數，換版後不會讀到舊檔。
+Upgrading the reader: change `CWFM_MOD_REF` in the `Dockerfile` to the mod's new commit SHA and push. The value also serves as a browser cache-busting parameter, so the old file is never served after an upgrade.
 
-## 設定儲存
+## Settings storage
 
-Tampermonkey 版使用 `GM_setValue` 跨網域儲存；Docker 版改用 `localStorage`（同源，Calibre-Web 所在的 domain）。清除瀏覽器資料時設定會一併清除，這是已知的取捨。
+The Tampermonkey version stores settings across domains with `GM_setValue`; the Docker version uses `localStorage` instead (same-origin, i.e. the domain Calibre-Web is served from). Clearing browser data clears the settings too — a known trade-off.
 
-## 授權
+## License
 
-本專案基於 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web)（GPL v3）與 [janeczku/calibre-web](https://github.com/janeczku/calibre-web)（GPL v3），以 GPL v3 授權釋出。
+This project is based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) (GPL v3) and [janeczku/calibre-web](https://github.com/janeczku/calibre-web) (GPL v3), and is released under GPL v3.
 
-foliate-js 以 MIT 授權釋出，已包含在本專案中。
-
----
-
-## English
-
-A Docker image that replaces [Calibre-Web](https://github.com/janeczku/calibre-web)'s built-in epub.js reader with [foliate-js](https://github.com/johnfactotum/foliate-js). No Tampermonkey required.
-
-See the [Tampermonkey userscript version](https://github.com/bgtsai/calibre-web-foliate-mod) for feature details.
-
-### License
-
-GPL v3. Based on linuxserver/docker-calibre-web (GPL v3) and janeczku/calibre-web (GPL v3). foliate-js is MIT licensed.
+foliate-js is released under the MIT license and is included in this project.
