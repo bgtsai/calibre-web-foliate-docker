@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "description": "cwfm legacy (iOS 15) build tools — exact versions pinned for reproducible output",
+  "dependencies": {
+    "acorn": "8.19.0",
+    "acorn-walk": "8.3.5",
+    "esbuild": "0.28.2"
+  }
+}

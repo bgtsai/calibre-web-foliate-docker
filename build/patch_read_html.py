@@ -3,6 +3,9 @@
 
 用法：python3 patch_read_html.py <read.html 路徑> <cache_bust 字串>
 
+另外在 <head> 一開頭插入同資料夾的 error_panel.html（錯誤面板，給沒有開發者
+工具的 iPad 看錯誤用），它必須比任何其他腳本都早執行。
+
 做法刻意選「修改原檔」而不是「整份換掉」：
 - 新版 mod 依賴原頁面的結構：#main 底下的 #viewer（掛閱讀器）、
   input[name=csrf_token]（同步書籤）、window.calibre.bookmark（伺服器書籤）。
@@ -20,6 +23,7 @@ import re
 import sys
 
 MARKER = "<!-- cwfm: foliate-js reader -->"
+ERROR_PANEL = (pathlib.Path(__file__).resolve().parent / "error_panel.html").read_text(encoding="utf-8")
 
 OLD_READER_FILES = [
     "css/reader.css",
@@ -86,6 +90,11 @@ def main(argv):
     for anchor in ['<div id="main">', '<div id="viewer"></div>', 'name="csrf_token"', "window.calibre = {"]:
         if sum(anchor in l for l in lines) != 1:
             sys.exit(f"[patch_read_html] 錯誤：mod 依賴的錨點不是剛好 1 個：{anchor}")
+
+    head = [i for i, l in enumerate(lines) if l.strip() == "<head>"]
+    if len(head) != 1:
+        sys.exit(f"[patch_read_html] 錯誤：<head> 應該剛好 1 行，實際 {len(head)} 行")
+    lines.insert(head[0] + 1, ERROR_PANEL.rstrip("\n"))
 
     body_end = [i for i, l in enumerate(lines) if l.strip() == "</body>"]
     if len(body_end) != 1:

@@ -41,6 +41,10 @@ services:
 | `cps/static/js/cwfm/cwfm-reader.js` | foliate-js 引擎 + 閱讀器介面，由 `build/make_reader.py` 從 mod 原始碼產生 |
 | `cps/templates/read.html` | 由 `build/patch_read_html.py` 就地修改：移除舊 epub.js 閱讀器的腳本與樣式，加入上面這支程式；頁面其餘結構保留 |
 
+相容性：`cwfm-reader.js` 建置時會用 esbuild 轉譯成舊版 Safari（iOS 15）也能執行的語法，並補上缺少的內建函式（`build/legacy/`）。PDF 專用的部分新函式沒有補，舊版 iOS 開 PDF 可能出錯。
+
+錯誤面板：閱讀頁發生錯誤時，左下角會出現紅色「⚠ 數量」按鈕，點開可看到錯誤清單並一鍵複製，方便在沒有開發者工具的裝置（例如 iPad）上回報問題（`build/error_panel.html`）。
+
 舊閱讀器的檔案本身仍留在 image 裡（其他頁面可能用到），只是 epub 閱讀頁不再載入。
 
 升級閱讀器：把 `Dockerfile` 的 `CWFM_MOD_REF` 改成 mod 新的 commit SHA 並推送即可。這個值同時當作瀏覽器快取破壞參數，換版後不會讀到舊檔。
