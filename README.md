@@ -30,6 +30,7 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 ### Layout
 
 - **Page flow**: switch between Paginated and Scroll mode.
+- **Default margins**: left/right margins default to 120px, the same as the default tap-zone width, so the tap zones never cover the text.
 - **Horizontal mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content width). In Content Priority mode, set the target content width in pixels; the margin absorbs any leftover space, keeping content width consistent when toggling fullscreen.
 - **Vertical mode**: choose between Margin Priority (fixed margin) and Content Priority (fixed content height), with the same logic as horizontal mode.
 - **Column control**: set the maximum number of columns and the gap between them in paginated mode. Both settings are automatically disabled in scroll mode (locked to 1 column).
@@ -47,22 +48,35 @@ Calibre-Web's built-in epub.js reader has limited typography controls (font size
 
 ### Page-turn shortcuts
 
-- Fully customizable keyboard shortcuts for previous/next page. Multiple key combinations can be recorded per direction.
+- Fully customizable keyboard shortcuts for previous/next page. Multiple key combinations can be recorded per direction. Defaults: ← / Page Up for the previous page, → / Page Down for the next page.
 - **Page-flip debounce**: set a minimum interval (in milliseconds) between consecutive page-turn triggers from the same shortcut, to prevent accidental double-flips.
 - Pages can also be turned with the **mouse wheel** (over the page, or over the progress bar at the bottom).
 - While the settings panel is open, page-turn shortcuts and wheel paging are paused so the arrow keys and wheel can adjust values instead; shortcuts keep working while the table of contents is open.
 
 ### Reading behavior
 
-- **Precise page alignment** (experimental, off by default): after toggling fullscreen, resizing the window or changing typography settings, the **first character** of the page you were on stays exactly at the top of the new layout, and paging forward or back continues from there. Jumping via the table of contents, a link or the progress bar restores the chapter's normal pagination. Automatically disabled in scroll mode.
+- **Precise page alignment** (on by default): after toggling fullscreen, resizing the window or changing typography settings, the **first character** of the page you were on stays exactly at the top of the new layout, and paging forward or back continues from there. Going back through the jump history (below) also returns to that exact first character. Jumping via the table of contents, a link or the progress bar restores the chapter's normal pagination. Automatically disabled in scroll mode.
 - **Local reading progress**: reading position is saved locally on every page turn. On reopening a book, the reader restores the last position automatically.
 - **Auto-sync to server**: optionally sync the local reading position back to Calibre-Web's server-side bookmark after a configurable idle period. Can also be triggered manually.
-- **Auto-hide cursor**: the cursor hides automatically after a configurable number of seconds of inactivity, and reappears on mouse movement.
+- **Auto-hide cursor**: the cursor hides automatically after a configurable number of seconds of inactivity, and reappears on mouse movement. It never hides while the pointer is over the toolbars, the table of contents, the settings panel or the jump button, and stays hidden when you move to the next chapter.
 - **Auto-hide toolbar**: the toolbar and progress bar slide out of view after a few seconds of inactivity and reappear on hover or click.
 - **Left/right tap zones**: clickable zones on the left and right edges of the screen for previous/next page navigation. The zone can be enabled (click-to-page) independently of its visual hint (whether the zone boundary is visible). Zone width is configurable in pixels. Automatically disabled in scroll mode.
-- **Page-turn animation**: a brief directional chevron animation plays at the tap zone position on each page turn, confirming the direction. Color is configurable (or follows the current theme automatically). Automatically disabled when the tap-zone visual hint is on.
+- **Page-turn animation**: a brief directional chevron animation plays at the tap zone position on each page turn, confirming the direction. Color is configurable, or set to **Auto** (the default) to follow the text color actually shown on the page. Automatically disabled when the tap-zone visual hint is on.
+
+### Jump history (back / forward)
+
+Every way of jumping somewhere else in the book keeps its own history, with **↩ Back**, **↪ Forward** and a clear button. Each history can go back several steps (the number of remaining steps is shown on the icon), and going somewhere new drops the old "forward" path, like a web browser.
+
+- **Footnotes and other in-book links**: after you click a link (e.g. a footnote marker like `[284]`), a small floating button appears at the top right. Click ↩ to return to where you were reading; once you're back at the starting point it disappears on its own. ✕ closes it early (with a confirmation).
+- **Table of contents**: the buttons sit in the table-of-contents header and record chapter jumps made from the table of contents. The table of contents now stays open after you pick a chapter; close it with its ✕ or by clicking outside it.
+- **Progress bar**: the buttons sit at the far left of the bottom bar and record jumps made by dragging the progress bar (one entry per release).
+
+With precise page alignment on, every back/forward step returns to the exact first character of the page — even if you toggled fullscreen or changed the layout in between.
 
 ### Interface
+
+- **Settings panel**: groups keep their designed order and are split into columns so the tallest column is as short as possible, using the fewest columns that fit; if they still don't fit, the panel scrolls vertically only. The panel header stays fixed while scrolling, and the layout recalculates automatically when content changes (adding tags, uploading fonts, collapsing groups) or the window is resized.
+- **Buttons**: all icon buttons share one size and style; the toolbar and panel headers line up at the same height.
 
 - **Language**: defaults to Traditional Chinese or English based on your browser's preferred language for web content. Can be manually set to either language; a page reload is required for the change to take effect.
 
