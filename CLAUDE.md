@@ -13,6 +13,7 @@
 - 使用者說「改閱讀器」時，就算他是叫你看這個 repo，也要去 mod repo 改。
 
 ## 改閱讀器的完整流程
+（使用者訂定的測試順序：mod 所有修改改完、自檢通過後**只推送一次**，給 Tampermonkey 安裝連結；使用者換回上游原版 linuxserver image 用 Tampermonkey 測試——Docker 版與腳本同時存在會互相干擾；使用者確認 OK 後才做下面第 3 步更新 Docker。）
 1. **mod repo**（`bgtsai/calibre-web-foliate-mod`），細節照它的 `CLAUDE.md`：
    - 只改 `src/app-ui.js`（介面）或 `foliate-src/bundle.js`（引擎）
    - 改 `calibre-web-foliate-mod.user.js` 第 4 行 `@version`
