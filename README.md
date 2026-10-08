@@ -77,7 +77,6 @@ With precise page alignment on, every back/forward step returns to the exact fir
 
 - **Settings panel**: groups keep their designed order and are split into columns so the tallest column is as short as possible, using the fewest columns that fit; if they still don't fit, the panel scrolls vertically only. The panel header stays fixed while scrolling, and the layout recalculates automatically when content changes (adding tags, uploading fonts, collapsing groups) or the window is resized.
 - **Buttons**: all icon buttons share one size and style; the toolbar and panel headers line up at the same height.
-
 - **Language**: defaults to Traditional Chinese or English based on your browser's preferred language for web content. Can be manually set to either language; a page reload is required for the change to take effect.
 
 ## Quick start
