@@ -5,9 +5,9 @@
 # 要打包的 calibre-web-foliate-mod 版本（完整 commit SHA）。
 # 改這一行就是「升級閱讀器」；它同時是瀏覽器端的快取破壞參數，
 # 換版本後瀏覽器一定會重新下載，不會拿到舊檔。
-ARG CWFM_MOD_REF=695ffdc1f34a6ef92a91720343228eeb016c3cf7
-# 【診斷用】1 = 在閱讀器程式裡插入檢查點，找 iOS 15 載入時當機的位置；找到並修好後改回 0 移除。
-ARG CWFM_CHECKPOINTS=1
+ARG CWFM_MOD_REF=c293b8a544db897f4e2493754457a7c61e427df8
+# 【診斷用】1 = 在閱讀器程式裡插入檢查點，找 iOS 15 載入時當機的位置；平常為 0（iPad 已確認穩定）。
+ARG CWFM_CHECKPOINTS=0
 
 # ---- 第一階段：從 mod 原始碼組出 cwfm-reader.js ----
 # mod 的 src/app-ui.js 與 foliate-src/bundle.js 是唯一來源，這裡不另存副本，

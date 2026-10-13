@@ -42,7 +42,7 @@
         function persist() { if (!SAFE) store(KEY, '== 這一次 ==\n' + header() + '\n' + entries.join('\n\n')); }
 
         function add(kind, text) {
-            if (kind !== 'step' && kind !== 'alive') errorCount++;
+            if (kind !== 'step' && kind !== 'alive' && kind !== 'note') errorCount++;
             var replaceAlive = kind === 'alive' && entries.length && entries[entries.length - 1].indexOf('[alive]') > 0;
             if (!replaceAlive && entries.length >= MAX_ENTRIES) { dropped++; return; }
             var line = '#' + (replaceAlive ? entries.length : entries.length + 1) + ' +' + ((Date.now() - T0) / 1000).toFixed(2) + 's [' + kind + '] ' + text;
@@ -150,6 +150,9 @@
         // 用 capture 階段才收得到；資源載入失敗（例如 404）沒有 message，略過。
         window.addEventListener('error', function (ev) {
             if (!ev || !ev.message) return;
+            // 瀏覽器的 ResizeObserver 延遲通知（版面變動時常見、無害，Sentry 等工具也預設忽略）：
+            // 只記錄、不算錯誤，不讓 ⚠ 亮起來
+            if (/^(Uncaught )?ResizeObserver loop/.test(ev.message)) { add('note', short(ev.message, 200)); return; }
             add('error', short(ev.message, 500) + '\n    @ ' + (ev.filename || '?') + ':' + ev.lineno + ':' + ev.colno + stackOf(ev.error));
         }, true);
         window.addEventListener('unhandledrejection', function (ev) {
