@@ -3,6 +3,10 @@
 <title>Calibre-Web Foliate Docker 建置狀態</title>
 <description>每日檢查上游 linuxserver/calibre-web 並自動建置的執行紀錄</description>
 <link>https://github.com/bgtsai/calibre-web-foliate-docker</link>
+<item><title>🔵 21:28 2026.10.13｜已更新建置</title><description><![CDATA[【摘要】推送觸發，已重新建置並推送 image<br>
+【上游版本】0.6.27-ls405（2026-10-11 發布）<br>
+【閱讀器版本】mod v1.79.3（2ad69e8）<br>
+【image】ghcr.io/bgtsai/calibre-web-foliate-docker:latest]]></description><pubDate>Tue, 13 Oct 2026 13:30:03 +0000</pubDate><guid isPermaLink="false">cwfm-docker-38405262204-1</guid></item>
 <item><title>🔵 20:35 2026.10.13｜已更新建置</title><description><![CDATA[【摘要】推送觸發，已重新建置並推送 image<br>
 【上游版本】0.6.27-ls405（2026-10-11 發布）<br>
 【閱讀器版本】mod v1.79.2（a5d6911）<br>
