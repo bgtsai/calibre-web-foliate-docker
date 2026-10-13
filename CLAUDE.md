@@ -11,6 +11,10 @@
 - **閱讀器功能（介面、設定、顏色、游標…）一律去 mod repo 改**，這個 repo 不放閱讀器原始碼副本，也不要在這裡打補丁改功能。
 - 這個 repo 只負責：抓 mod 的指定版本 → 組裝 → 轉成舊 Safari 可執行 → 塞進 Calibre-Web 的 `read.html`。
 - 使用者說「改閱讀器」時，就算他是叫你看這個 repo，也要去 mod repo 改。
+- **唯一例外：伺服器端 API**（v1.79 起）。書籤、跳轉紀錄要跟著 Calibre-Web 使用者走，只能在伺服器端存，
+  所以 `build/cwfm_api.py`（Flask blueprint，資料存 `/config/cwfm.db`）與 `build/patch_calibre_web.py`
+  （在 `cps/main.py` 註冊、`login.html` 暫存定位網址）放在這裡。介面與呼叫端仍在 mod repo。
+  規格見 mod 的 `docs/spec-v1.79.md` §8。
 
 ## 改閱讀器的完整流程
 （使用者訂定的測試順序：mod 所有修改改完、自檢通過後**只推送一次**，給 Tampermonkey 安裝連結；使用者換回上游原版 linuxserver image 用 Tampermonkey 測試——Docker 版與腳本同時存在會互相干擾；使用者確認 OK 後才做下面第 3 步更新 Docker。）
@@ -38,6 +42,11 @@
 - `build/patch_read_html.py`：直接修改 Calibre-Web 的 `read.html`：移除舊閱讀器、最前面插入錯誤面板、
   加開機腳本（localStorage 取代 GM_setValue）。網址加 `?cwfm=safe` 是安全模式（不載入閱讀器、只看上次錯誤紀錄）。
 - `build/error_panel.html`：iPad 上沒有開發者工具，錯誤直接顯示在畫面上（ES5 寫法）。
+- `build/patch_calibre_web.py`：複製 `cwfm_api.py` 進 `cps/`、在 `main.py` 的 `app.register_blueprint(editbook)` 後註冊、
+  `login.html` 加暫存定位腳本；插入點必須剛好 1 處，上游改版對不上就建置失敗。
+- 開機段落（`patch_read_html.py`）另外提供 `bookdata`（localStorage 的 `cwfm-bookdata-<書號>`）與 `api`（`url_for('cwfm_api.base')`）。
+- API 整合測試：`pip install calibreweb==<版本>` 到 venv，對安裝的 `calibreweb/cps` 跑 `patch_calibre_web.py`，
+  把 `app.db` 的 `config_calibre_dir` 指到 janeczku/calibre-web repo 的 `library/`，啟動後用 requests 登入（admin/admin123）打 API。
 
 ## 測試
 `test/run_test.py`：無頭瀏覽器模擬 Calibre-Web 開書頁（含相同 CSP、壓縮過的測試 EPUB）。

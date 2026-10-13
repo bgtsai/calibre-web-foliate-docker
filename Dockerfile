@@ -5,7 +5,7 @@
 # 要打包的 calibre-web-foliate-mod 版本（完整 commit SHA）。
 # 改這一行就是「升級閱讀器」；它同時是瀏覽器端的快取破壞參數，
 # 換版本後瀏覽器一定會重新下載，不會拿到舊檔。
-ARG CWFM_MOD_REF=e389e9568c08c3317b2a5030c8e42f9b1f3781e3
+ARG CWFM_MOD_REF=03ef367fba0c19ce5c89b4390f589dea6ebe8905
 # 【診斷用】1 = 在閱讀器程式裡插入檢查點，找 iOS 15 載入時當機的位置；平常為 0（iPad 已確認穩定）。
 ARG CWFM_CHECKPOINTS=0
 
@@ -44,9 +44,10 @@ LABEL org.opencontainers.image.description="Calibre-Web with foliate-js reader �
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 
 COPY --from=reader /out/cwfm-reader.js /app/calibre-web/cps/static/js/cwfm/cwfm-reader.js
-COPY build/patch_read_html.py build/error_panel.html /tmp/cwfm-build/
+COPY build/patch_read_html.py build/error_panel.html build/patch_calibre_web.py build/cwfm_api.py /tmp/cwfm-build/
 # linuxserver 的 image 若沒有把 python3 放進 PATH，改用它內建的 venv
 RUN set -eu; \
     PY=$(command -v python3 || echo /lsiopy/bin/python3); \
     "$PY" /tmp/cwfm-build/patch_read_html.py /app/calibre-web/cps/templates/read.html "$(echo "${CWFM_MOD_REF}" | cut -c1-7)-legacy4-chk${CWFM_CHECKPOINTS}"; \
+    "$PY" /tmp/cwfm-build/patch_calibre_web.py /app/calibre-web/cps; \
     rm -rf /tmp/cwfm-build

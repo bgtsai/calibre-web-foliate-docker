@@ -29,7 +29,7 @@ def make_epub():
 env = jinja2.Environment(extensions=['jinja2.ext.i18n'])
 env.install_null_translations()
 html = env.from_string(open(TPL, encoding='utf-8').read()).render(
-    url_for=lambda ep, **kw: '/static/' + kw['filename'] if ep == 'static' else '/' + ep,
+    url_for=lambda ep, **kw: '/static/' + kw['filename'] if ep == 'static' else '/cwfm/api/' if ep == 'cwfm_api.base' else '/' + ep,
     csrf_token=lambda: 'test-csrf', g=type('G', (), {'google_site_verification': ''})(),
     title='測試書名', bookid=BOOK_ID, book_format='epub', bookmark=None,
     current_user=type('U', (), {'is_authenticated': True})()).encode('utf-8')
@@ -55,7 +55,17 @@ class H(http.server.BaseHTTPRequestHandler):
         if p == f'/read/{BOOK_ID}/epub': self.send(200, html, 'text/html; charset=utf-8')
         elif p == '/static/js/cwfm/cwfm-reader.js': self.send(200, JSB, 'text/javascript')
         elif p == f'/show/{BOOK_ID}/epub/file.epub': self.send(200, EPUB, 'application/epub+zip')
+        elif p == f'/cwfm/api/book/{BOOK_ID}': self.send(200, b'{"bookmarks":[],"navhist":null}', 'application/json')
         else: self.send(404, b'not found')
+
+    def do_PUT(self):
+        hits.append(('PUT', self.path))
+        self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        self.send(200, b'{"ok":true}', 'application/json')
+
+    def do_DELETE(self):
+        hits.append(('DELETE', self.path))
+        self.send(200, b'{"ok":true}', 'application/json')
 
     def do_POST(self):
         hits.append(('POST', self.path))

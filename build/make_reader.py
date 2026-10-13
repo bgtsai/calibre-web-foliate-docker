@@ -50,11 +50,13 @@ def main(argv):
                        "= window.__cwfmBoot.settings;", "INITIAL_SETTINGS 宣告")
     app = replace_once(app, '= "__INITIAL_POSITION__";',
                        "= window.__cwfmBoot.position;", "INITIAL_POSITION 宣告")
+    app = replace_once(app, '= "__INITIAL_BOOKDATA__";',
+                       "= window.__cwfmBoot.bookdata;", "INITIAL_BOOKDATA 宣告")
     app = replace_once(app, '= "__CWFM_VERSION__";',
                        "= " + json.dumps(version) + ";", "CWFM_VERSION 宣告")
 
     leftover = sorted(set(re.findall(
-        r"__(?:BOOK_ID|VIEWER_SELECTOR|INITIAL_SETTINGS|INITIAL_POSITION|CWFM_VERSION)__", app)))
+        r"__(?:BOOK_ID|VIEWER_SELECTOR|INITIAL_SETTINGS|INITIAL_POSITION|INITIAL_BOOKDATA|CWFM_VERSION)__", app)))
     if leftover:
         sys.exit(f"[make_reader] 錯誤：替換後仍有佔位字串殘留：{leftover}")
 

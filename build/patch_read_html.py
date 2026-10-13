@@ -53,7 +53,9 @@ BOOT = """    {marker}
         window.__cwfmBoot = {{
             bookId: bookId,
             settings: read('cwfm-settings'),
-            position: read('cwfm-position-' + bookId)
+            position: read('cwfm-position-' + bookId),
+            bookdata: read('cwfm-bookdata-' + bookId),
+            api: "{{{{ url_for('cwfm_api.base') }}}}"
         }};
         document.addEventListener('cwfm:gm-set', function (e) {{
             var d = e.detail || {{}};
