@@ -5,7 +5,7 @@
 # 要打包的 calibre-web-foliate-mod 版本（完整 commit SHA）。
 # 改這一行就是「升級閱讀器」；它同時是瀏覽器端的快取破壞參數，
 # 換版本後瀏覽器一定會重新下載，不會拿到舊檔。
-ARG CWFM_MOD_REF=2ad69e87551555ee68770a8989cbbf19c630cf07
+ARG CWFM_MOD_REF=859bb5941b5191ac4f39c08647127769f40e7af8
 # 【診斷用】1 = 在閱讀器程式裡插入檢查點，找 iOS 15 載入時當機的位置；平常為 0（iPad 已確認穩定）。
 ARG CWFM_CHECKPOINTS=0
 
