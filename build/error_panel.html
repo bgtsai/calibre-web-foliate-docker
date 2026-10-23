@@ -41,7 +41,50 @@
         // 安全模式不寫入：寫了就會把要看的「上一次」紀錄蓋掉
         function persist() { if (!SAFE) store(KEY, '== 這一次 ==\n' + header() + '\n' + entries.join('\n\n')); }
 
+        // ---- 伺服器端錯誤紀錄（v1.80）----
+        // 這一次開書只要出現任何錯誤或提示（含下面「不顯示清單」裡的），就把整份紀錄（步驟＋錯誤）
+        // 送到 /cwfm/api/errlog 存起來；正常開書不送。只看錯誤那一行判斷不出原因，前後步驟（例如
+        // [alive] 間隔看得出分頁曾在背景）才是線索。同一次開書用 T0 當識別碼，重送會覆蓋同一筆。
+        var hidden = [];          // 不顯示在面板、只送伺服器的項目
+        var needUpload = false, uploadTimer = null, origFetchRef = null;
+        var UPLOAD_DELAY_MS = 5000; // 出錯後等一下再送，同一波錯誤合併成一次
+        function uploadText() {
+            return header() + '\n' + entries.join('\n\n') +
+                (hidden.length ? '\n\n-- 不顯示在面板的項目 --\n' + hidden.join('\n\n') : '');
+        }
+        function upload(keepalive) {
+            clearTimeout(uploadTimer); uploadTimer = null;
+            if (!needUpload || SAFE) return;
+            try {
+                var boot = window.__cwfmBoot || {};
+                var base = boot.api || '/cwfm/api/';
+                var tok = document.querySelector('input[name="csrf_token"]');
+                var m = /\/read\/(\d+)/.exec(location.pathname);
+                var body = JSON.stringify({ session: String(T0), book: m ? +m[1] : 0, text: uploadText() });
+                if (body.length > 200000) body = JSON.stringify({ session: String(T0), book: m ? +m[1] : 0, text: uploadText().slice(0, 190000) + '\n…（截斷）' });
+                window.fetch && (origFetchRef || window.fetch).call(window, base.replace(/\/?$/, '/') + 'errlog', {
+                    method: 'POST', keepalive: !!keepalive, credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': tok ? tok.value : '' }, body: body
+                }).then(function (r) { if (r.ok) needUpload = false; }, function () { /* 送不出去下次再送 */ });
+            } catch (e) { /* 面板自己出錯不能影響頁面 */ }
+        }
+        function markUpload() {
+            needUpload = true;
+            if (!uploadTimer) uploadTimer = setTimeout(function () { upload(false); }, UPLOAD_DELAY_MS);
+        }
+        window.addEventListener('pagehide', function () { upload(true); });
+        // 不顯示清單：瀏覽器本身限制造成、看了也查不出原因的訊息——不進面板、不亮 ⚠，只送伺服器
+        // - 「Script error.」且沒有檔名：錯誤來自跟頁面不同來源的程式，瀏覽器把內容整個遮掉
+        //   （閱讀器跟頁面同來源，自己的錯誤一定有檔名行號；使用者確認閱讀無異常）
+        // - ResizeObserver loop：版面變動時瀏覽器的延遲通知，無害
+        function isHiddenNoise(ev) {
+            if (/^(Uncaught )?ResizeObserver loop/.test(ev.message)) return true;
+            if (/^Script error\.?$/.test(ev.message) && !ev.filename) return true;
+            return false;
+        }
+
         function add(kind, text) {
+            if (kind !== 'step' && kind !== 'alive') markUpload();
             if (kind !== 'step' && kind !== 'alive' && kind !== 'note') errorCount++;
             var replaceAlive = kind === 'alive' && entries.length && entries[entries.length - 1].indexOf('[alive]') > 0;
             if (!replaceAlive && entries.length >= MAX_ENTRIES) { dropped++; return; }
@@ -152,7 +195,12 @@
             if (!ev || !ev.message) return;
             // 瀏覽器的 ResizeObserver 延遲通知（版面變動時常見、無害，Sentry 等工具也預設忽略）：
             // 只記錄、不算錯誤，不讓 ⚠ 亮起來
-            if (/^(Uncaught )?ResizeObserver loop/.test(ev.message)) { add('note', short(ev.message, 200)); return; }
+            if (isHiddenNoise(ev)) {
+                hidden.push('+' + ((Date.now() - T0) / 1000).toFixed(2) + 's [hidden] ' + short(ev.message, 200) + ' @ ' + (ev.filename || '?') + ':' + ev.lineno + ':' + ev.colno);
+                if (hidden.length > 20) hidden.shift();
+                markUpload();
+                return;
+            }
             add('error', short(ev.message, 500) + '\n    @ ' + (ev.filename || '?') + ':' + ev.lineno + ':' + ev.colno + stackOf(ev.error));
         }, true);
         window.addEventListener('unhandledrejection', function (ev) {
@@ -185,6 +233,7 @@
         // 下載書檔
         if (window.fetch) {
             var origFetch = window.fetch;
+            origFetchRef = origFetch; // 上傳錯誤紀錄用原本的 fetch，不經過下面的足跡記錄
             window.fetch = function (input) {
                 var url = typeof input === 'string' ? input : (input && input.url) || '';
                 var isBook = /\/show\/\d+\//.test(url);

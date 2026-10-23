@@ -17,7 +17,7 @@ import sqlite3
 import threading
 import time
 
-from flask import Blueprint, jsonify, request, abort
+from flask import Blueprint, jsonify, request, abort, Response
 from .cw_login import current_user
 
 from .usermanagement import user_login_required
@@ -47,6 +47,8 @@ def _conn():
                 'bm_id TEXT NOT NULL, data TEXT NOT NULL, updated REAL NOT NULL, PRIMARY KEY (user_id, book_id, bm_id))')
     con.execute('CREATE TABLE IF NOT EXISTS navhist (user_id INTEGER NOT NULL, book_id INTEGER NOT NULL, '
                 'data TEXT NOT NULL, updated REAL NOT NULL, PRIMARY KEY (user_id, book_id))')
+    con.execute('CREATE TABLE IF NOT EXISTS errlog (user_id INTEGER NOT NULL, session TEXT NOT NULL, book_id INTEGER NOT NULL, '
+                'text TEXT NOT NULL, updated REAL NOT NULL, PRIMARY KEY (user_id, session))')
     return con
 
 
@@ -148,3 +150,59 @@ def put_navhist(book_id):
         finally:
             con.close()
     return jsonify(ok=True)
+
+
+# ---- v1.80 錯誤紀錄 ----
+# 閱讀頁的錯誤面板在「這一次開書出現任何錯誤或提示」時，把整份紀錄（步驟＋錯誤）送上來；
+# 同一次開書（session）重送會覆蓋。每個使用者只留最近 ERRLOG_KEEP 次，避免資料庫無限長大。
+# 檢視：登入後打開 /cwfm/api/errlog（只看自己的，新的在前）。
+ERRLOG_KEEP = 50
+SESSION_RE = re.compile(r'^[0-9]{1,20}$')
+ERRLOG_MAX_TEXT = 200 * 1000
+
+
+@cwfm_api.route('/errlog', methods=['POST'])
+@user_login_required
+def put_errlog():
+    data = _json_body()
+    if not isinstance(data, dict):
+        abort(400)
+    session = str(data.get('session', ''))
+    text = data.get('text')
+    try:
+        book_id = int(data.get('book') or 0)
+    except (TypeError, ValueError):
+        book_id = 0
+    if not SESSION_RE.match(session) or not isinstance(text, str):
+        abort(400)
+    text = text[:ERRLOG_MAX_TEXT]
+    with _lock:
+        con = _conn()
+        try:
+            con.execute('INSERT OR REPLACE INTO errlog (user_id, session, book_id, text, updated) VALUES (?,?,?,?,?)',
+                        (_uid(), session, book_id, text, time.time()))
+            con.execute('DELETE FROM errlog WHERE user_id=? AND session NOT IN '
+                        '(SELECT session FROM errlog WHERE user_id=? ORDER BY updated DESC LIMIT ?)',
+                        (_uid(), _uid(), ERRLOG_KEEP))
+            con.commit()
+        finally:
+            con.close()
+    return jsonify(ok=True)
+
+
+@cwfm_api.route('/errlog', methods=['GET'])
+@user_login_required
+def get_errlog():
+    with _lock:
+        con = _conn()
+        try:
+            rows = con.execute('SELECT book_id, text, updated FROM errlog WHERE user_id=? ORDER BY updated DESC',
+                               (_uid(),)).fetchall()
+        finally:
+            con.close()
+    tz = time.strftime  # 顯示用伺服器時間（容器通常設 TZ=Asia/Taipei）
+    parts = ['cwfm 錯誤紀錄（最近 %d 次出錯的開書，新的在前；共 %d 筆）' % (ERRLOG_KEEP, len(rows))]
+    for i, (book_id, text, updated) in enumerate(rows, 1):
+        parts.append('=' * 60 + '\n#%d  書號 %s  最後更新 %s\n' % (i, book_id, tz('%Y-%m-%d %H:%M:%S', time.localtime(updated)))
+                     + '=' * 60 + '\n' + text)
+    return Response('\n\n'.join(parts) + '\n', mimetype='text/plain; charset=utf-8')
