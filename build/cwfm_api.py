@@ -190,19 +190,57 @@ def put_errlog():
     return jsonify(ok=True)
 
 
+def _is_admin():
+    try:
+        return bool(current_user.role_admin())
+    except Exception:
+        return False
+
+
+def _user_names():
+    # 管理員檢視全部時標上使用者名稱；讀不到就只顯示編號
+    try:
+        from . import ub
+        return {u.id: u.name for u in ub.session.query(ub.User).all()}
+    except Exception:
+        return {}
+
+
 @cwfm_api.route('/errlog', methods=['GET'])
 @user_login_required
 def get_errlog():
+    # ?all=1：只有 Calibre-Web 管理員有效（伺服器端檢查），看所有使用者；其他人一律只看自己的
+    show_all = request.args.get('all') == '1' and _is_admin()
     with _lock:
         con = _conn()
         try:
-            rows = con.execute('SELECT book_id, text, updated FROM errlog WHERE user_id=? ORDER BY updated DESC',
-                               (_uid(),)).fetchall()
+            if show_all:
+                rows = con.execute('SELECT user_id, book_id, text, updated FROM errlog ORDER BY updated DESC').fetchall()
+            else:
+                rows = con.execute('SELECT user_id, book_id, text, updated FROM errlog WHERE user_id=? ORDER BY updated DESC',
+                                   (_uid(),)).fetchall()
         finally:
             con.close()
+    names = _user_names() if show_all else {}
     tz = time.strftime  # 顯示用伺服器時間（容器通常設 TZ=Asia/Taipei）
-    parts = ['cwfm 錯誤紀錄（最近 %d 次出錯的開書，新的在前；共 %d 筆）' % (ERRLOG_KEEP, len(rows))]
-    for i, (book_id, text, updated) in enumerate(rows, 1):
-        parts.append('=' * 60 + '\n#%d  書號 %s  最後更新 %s\n' % (i, book_id, tz('%Y-%m-%d %H:%M:%S', time.localtime(updated)))
+    scope = '所有使用者（管理員檢視）' if show_all else '目前登入的使用者'
+    parts = ['cwfm 錯誤紀錄（%s；每人保留最近 %d 次出錯的開書，新的在前；共 %d 筆）' % (scope, ERRLOG_KEEP, len(rows))]
+    for i, (uid, book_id, text, updated) in enumerate(rows, 1):
+        who = ('  使用者 %s' % names.get(uid, uid)) if show_all else ''
+        parts.append('=' * 60 + '\n#%d%s  書號 %s  最後更新 %s\n' % (i, who, book_id, tz('%Y-%m-%d %H:%M:%S', time.localtime(updated)))
                      + '=' * 60 + '\n' + text)
     return Response('\n\n'.join(parts) + '\n', mimetype='text/plain; charset=utf-8')
+
+
+@cwfm_api.route('/errlog', methods=['DELETE'])
+@user_login_required
+def delete_errlog():
+    # 只刪自己的（設定面板〔清除我的錯誤紀錄〕）；CSRF 沿用全站保護
+    with _lock:
+        con = _conn()
+        try:
+            con.execute('DELETE FROM errlog WHERE user_id=?', (_uid(),))
+            con.commit()
+        finally:
+            con.close()
+    return jsonify(ok=True)

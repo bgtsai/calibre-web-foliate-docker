@@ -52,9 +52,19 @@
             return header() + '\n' + entries.join('\n\n') +
                 (hidden.length ? '\n\n-- 不顯示在面板的項目 --\n' + hidden.join('\n\n') : '');
         }
+        // 使用者在設定面板同意開啟（errlogUpload）才上傳；預設不上傳。閱讀器已載入時讀它的即時設定，
+        // 否則讀本機存的設定（錯誤面板比閱讀器早載入）
+        function uploadAllowed() {
+            try {
+                var live = window.__cwfm && window.__cwfm.settings;
+                if (live) return live.errlogUpload === true;
+                var st = JSON.parse(localStorage.getItem('cwfm-settings') || 'null');
+                return !!(st && st.errlogUpload === true);
+            } catch (e) { return false; }
+        }
         function upload(keepalive) {
             clearTimeout(uploadTimer); uploadTimer = null;
-            if (!needUpload || SAFE) return;
+            if (!needUpload || SAFE || !uploadAllowed()) return;
             try {
                 var boot = window.__cwfmBoot || {};
                 var base = boot.api || '/cwfm/api/';
