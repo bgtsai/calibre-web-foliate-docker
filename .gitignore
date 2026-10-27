@@ -3,3 +3,9 @@ src/
 vendor/
 __pycache__/
 node_modules/
+
+# 跑測試時產生的檔案（截圖、匯出測試、npm 鎖定檔），不進 repo（2026-10-28：474216b 曾誤推）
+test/reader/v1*.png
+test/reader/feat_*.png
+test/reader/export.html
+build/legacy/package-lock.json
