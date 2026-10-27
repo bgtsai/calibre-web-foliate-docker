@@ -1,13 +1,13 @@
 #!/bin/bash
 # calibre-web-foliate 一鍵更新（Synology 工作排程器用，使用者選 root）
 # 容器在（執行中或停止）→ Watchtower 只更新這一個；不在 → 用 compose.yaml 建立專案。
-# 用法：排程指令欄只放一行  bash /volume1/docker/compose/compose_calibre-web-foliate/update.sh
-# 下面四個值改成你自己的。
+# 用法：排程指令欄放 README 裡那一行——每次先抓 GitHub 最新版、檢查過才替換再執行，抓不到就跑現有這份。
+# 因為每次會被最新版覆蓋，設定不要改在這個檔案裡；要改就在指令前面指定，例如 CONTAINER=xxx PROJECT=yyy bash ...
 
-CONTAINER="11_calibre-web-foliate"
-PROJECT="calibre-web-foliate"          # 要跟 Container Manager 裡的專案名稱相同，否則會變成另一個專案
-DIR="/volume1/docker/compose/compose_calibre-web-foliate"
-LOG="$DIR/update.log"
+CONTAINER="${CONTAINER:-11_calibre-web-foliate}"
+PROJECT="${PROJECT:-calibre-web-foliate}"   # 要跟 Container Manager 裡的專案名稱相同，否則會變成另一個專案
+DIR="${DIR:-$(cd "$(dirname "$0")" && pwd)}" # 預設＝這支腳本所在的資料夾（放在 compose 專案資料夾裡）
+LOG="${LOG:-$DIR/nas-update.log}"
 
 exec > "$LOG" 2>&1                    # 排程沒有畫面，全部輸出寫進 log
 echo "== $(TZ=Asia/Taipei date '+%F %T')"
