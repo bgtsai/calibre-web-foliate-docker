@@ -68,5 +68,8 @@ python3 test/run_test.py /tmp/p.html /tmp/r.js chromium   # 再跑 webkit、fire
 - 推送或手動觸發一律建置；手動觸發勾 `check_only` 可比照排程只在有新版時建置（用來測試偵測邏輯）。
 - 上游改版若讓 `patch_read_html.py` 對不上，建置會失敗、記錄不更新，隔天會再試——收到失敗通知時要去修 patch。
 
+## 功能測試（test/reader/）
+改閱讀器後，除了上面的 `run_test.py` 開書冒煙測試，還要跑 `test/reader/` 的功能測試（三種瀏覽器），用法見該資料夾的 README。
+
 ## 錯誤面板
 - `ResizeObserver loop…` 只記為 `[note]`，不計入 ⚠ 數量（瀏覽器無害通知，舊版也會出現）。
