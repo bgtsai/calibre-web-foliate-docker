@@ -105,7 +105,7 @@ It is based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/d
 - **Page flow**: paginated or scrolled.
 - **Horizontal / vertical mode**: margin priority (fixed margins) or content priority (fixed content width / height; margins absorb the rest, so the content keeps its size when you go fullscreen or rotate the screen).
 - **Columns**: maximum columns and the gap between them in paginated mode; scrolled mode is always one column.
-- **Defaults for first-time users** are calculated per device to look like an e-reader: one column; on computers and tablets, content priority with a content box and font size based on the screen (the farther away you read, the more characters per line); on phones, the text fills the screen. Everything can be adjusted afterwards.
+- **Defaults for first-time users** are calculated per device to look like an e-reader: one column; on computers and tablets, content priority with a content box and font size based on the screen (the farther away you read, the more characters per line); on phones, the text fills the screen. Letter and line spacing follow the interface language: 0.2em and 1.8 for Chinese, 0 and 1.5 for other languages. Everything can be adjusted afterwards.
 
 ### Themes and colors
 
