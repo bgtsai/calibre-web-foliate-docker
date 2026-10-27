@@ -199,6 +199,24 @@ with sync_playwright() as p:
     pg.mouse.move(r1['x'] + 60, r1['y'] + r1['height'] / 2); pg.wait_for_timeout(400)
     id1 = pg.evaluate("document.querySelector('.cwfm-bm-card')?.dataset.type")
     check('滑鼠移上去就開卡片', id1 is not None, id1)
+    # v1.80.8：hover 只亮指到的那一塊；卡片打開時整列的類型色外框不變
+    HV = "(()=>{const r=document.querySelector('.cwfm-bm-row.cwfm-bm-active');const s=e=>getComputedStyle(r.querySelector(e)).boxShadow;return {body:s('.cwfm-bm-body'),exp:s('.cwfm-bm-exp'),frame:getComputedStyle(r).backgroundColor}})()"
+    h1 = pg.evaluate(HV)
+    check('hover 左邊跳轉區：只有左邊變亮', h1['body'] != 'none' and h1['exp'] == 'none', h1)
+    pg.screenshot(path=f'v1808_hover_body_{BROWSER}.png', clip={'x': 0, 'y': max(0, r1['y'] - 40), 'width': 420, 'height': 120})
+    pg.mouse.move(r1['x'] + r1['width'] - 12, r1['y'] + r1['height'] / 2); pg.wait_for_timeout(300)
+    h2 = pg.evaluate(HV)
+    check('hover 右邊 ›：只有箭頭那格變亮', h2['exp'] != 'none' and h2['body'] == 'none', h2)
+    check('hover 不改類型色外框', h1['frame'] == h2['frame'] and h1['frame'] not in ('rgba(0, 0, 0, 0)', ''), (h1['frame'], h2['frame']))
+    pg.screenshot(path=f'v1808_hover_exp_{BROWSER}.png', clip={'x': 0, 'y': max(0, r1['y'] - 40), 'width': 420, 'height': 120})
+    sch0 = pg.evaluate("document.documentElement.dataset.cwfmScheme||''")
+    pg.evaluate("document.documentElement.dataset.cwfmScheme='light'"); pg.wait_for_timeout(100)
+    TINT = {'pos': 'rgba(226, 75, 74, 0.15)', 'excerpt': 'rgba(250, 199, 117, 0.15)', 'note': 'rgba(159, 225, 203, 0.15)'}
+    ty = pg.evaluate("document.querySelector('.cwfm-bm-row.cwfm-bm-active').dataset.type")
+    check('hover 用卡片抬頭同一套類型淡色（深淺主題相同）', TINT[ty] in h2['exp'] and TINT[ty] in pg.evaluate(HV)['exp'], (ty, h2['exp']))
+    pg.screenshot(path=f'v1808_hover_exp_light_{BROWSER}.png', clip={'x': 0, 'y': max(0, r1['y'] - 40), 'width': 420, 'height': 120})
+    pg.evaluate(f"document.documentElement.dataset.cwfmScheme={json.dumps(sch0)}")
+    pg.mouse.move(r1['x'] + 60, r1['y'] + r1['height'] / 2); pg.wait_for_timeout(300)
     pg.screenshot(path=f'v180_card_{BROWSER}.png')
     ol = pg.evaluate("(()=>{const c=document.querySelector('.cwfm-bm-card');const sv=c.querySelector('svg.cwfm-card-outline');const ps=sv?sv.querySelectorAll('path'):[];return {n:ps.length,w:+(sv&&sv.getAttribute('width')),cw:c.offsetWidth,stroke:ps[2]&&getComputedStyle(ps[2]).stroke,d:ps[0]&&ps[0].getAttribute('d').length,ring:getComputedStyle(c).boxShadow}})()")
     check('卡片外框一條 SVG 路徑（底色、標題淡色、色框）、寬度跟卡片一致', ol['n'] == 3 and ol['w'] == ol['cw'] and ol['stroke'] not in (None, 'none') and '0px 0px 0px 2px' not in ol['ring'], ol)
@@ -242,6 +260,12 @@ with sync_playwright() as p:
     check('Esc（焦點在按鈕）也只關對話框、卡片留著', st == [False, True], st)
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
     check('對話框關掉後再按 Esc 才關卡片', pg.evaluate("!document.querySelector('.cwfm-bm-card')"))
+    # v1.80.8：設定面板最底下顯示版本
+    pg.click('button[aria-label="設定"], button[aria-label="Settings"]', force=True); pg.wait_for_timeout(600)
+    vl = pg.evaluate("(()=>{const b=document.querySelector('.cwfm-settings-panel .cwfm-panel-body');const v=b&&b.lastElementChild;return v&&v.classList.contains('cwfm-version-line')?[v.textContent,getComputedStyle(v).fontSize]:null})()")
+    check('設定面板最底下顯示版本（16px）', vl is not None and vl[0].startswith('cwfm v') and vl[1] == '16px', vl)
+    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-body').scrollTop=1e6"); pg.wait_for_timeout(200)
+    pg.screenshot(path=f'v1808_version_{BROWSER}.png')
     pg.close()
 
     # ---- 全螢幕不支援：停用外觀＋提示 ----
