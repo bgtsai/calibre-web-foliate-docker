@@ -33,6 +33,17 @@ services:
 
 It is based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) and used the same way: if you already run that image, just replace the `image:` line — config and library paths stay the same. Then open any EPUB in Calibre-Web and click the gear icon in the top-right corner to open the settings panel.
 
+### One-click update on Synology
+
+`tools/nas-update.sh`: if the container exists (running or stopped), Watchtower updates just that container (pull, recreate only if the image changed, remove the old image); if it does not exist, the project is created from your `compose.yaml`.
+
+1. Put the script in the compose project folder (e.g. `/volume1/docker/compose/compose_calibre-web-foliate/update.sh`) and edit the four values at the top: container name, project name as shown in Container Manager, folder, log path
+2. DSM "Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script"; on the General tab set the user to **root**
+3. Put a single line in the command box (do not paste the whole script — long content disappears after saving): `bash /volume1/docker/compose/compose_calibre-web-foliate/update.sh`
+4. Press "Run" in Task Scheduler when you want to update; results go to `update.log` in the same folder
+
+If you change `compose.yaml` (e.g. environment variables), recreate the project in Container Manager; this script only updates the image.
+
 ## When something goes wrong: error logs and reporting
 
 > [!IMPORTANT]

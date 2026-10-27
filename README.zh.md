@@ -33,6 +33,17 @@ services:
 
 以 [linuxserver/docker-calibre-web](https://github.com/linuxserver/docker-calibre-web) 為基礎，用法相同：如果你原本就在用那個 image，只要把 `image:` 這一行換掉即可，設定檔、書庫路徑都不用改。之後在 Calibre-Web 開啟任一本 EPUB，右上角齒輪圖示可以開啟設定面板。
 
+### 在 Synology 上一鍵更新
+
+`tools/nas-update.sh`：容器已存在（執行中或停止）就用 Watchtower 只更新這一個容器（拉新映像、有變才重建、清掉舊映像）；容器不存在就用你的 `compose.yaml` 建立專案。
+
+1. 把腳本放到 compose 專案資料夾（例如 `/volume1/docker/compose/compose_calibre-web-foliate/update.sh`），打開檔案改最上面四個值：容器名稱、Container Manager 裡的專案名稱、資料夾、log 位置
+2. DSM「控制台 → 工作排程器 → 新增 → 排定的任務 → 使用者定義的指令碼」，「一般」分頁的使用者選 **root**
+3. 指令欄只放一行（不要把整支腳本貼進去，太長的內容存檔後會消失）：`bash /volume1/docker/compose/compose_calibre-web-foliate/update.sh`
+4. 要更新時在工作排程器按「執行」；結果看同資料夾的 `update.log`
+
+改了 `compose.yaml`（例如環境變數）時，要在 Container Manager 重建專案；這支腳本只負責更新映像。
+
 ## 出問題時：錯誤紀錄與回報
 
 > [!IMPORTANT]
