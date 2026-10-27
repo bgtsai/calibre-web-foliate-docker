@@ -96,6 +96,13 @@ EARLY = """    <meta name="cwfm-docker" content="1">
 LOADING = """    <div id="cwfm-loading" data-cwfm-owned="true" style="position:fixed;left:0;top:0;right:0;bottom:0;z-index:999990;display:flex;align-items:center;justify-content:center;pointer-events:none;font:15px/1.5 sans-serif;color:#8a8a8a"><div style="display:flex;align-items:center;gap:10px"><span style="width:18px;height:18px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:cwfm-spin 0.8s linear infinite"></span><span id="cwfm-loading-text">正在載入書籍… Loading…</span></div><style>@keyframes cwfm-spin{{to{{transform:rotate(360deg)}}}}</style></div>"""
 
 
+# 一進頁面就藏起原生閱讀介面的骨架（側邊欄、設定視窗、遮罩、#main 裡除了 #viewer 的東西）。
+# 原本只靠閱讀器程式裡的 hideOldUI() 藏，但閱讀器約 1.2MB、下載解析完才執行，這段時間原生介面會先畫出來。
+# 放在 <head> 裡，瀏覽器解析到 <body> 之前就生效，第一個畫面就看不到。
+# 跟 mod 外層腳本（calibre-web-foliate-mod.user.js）的 cwfm-early-hide 同一條規則，改一邊要改另一邊。
+EARLY_HIDE = """    <style id="cwfm-early-hide">#sidebar, #settings-modal, body > div.overlay, #main > :not(#viewer) { display: none !important; }</style>"""
+
+
 def main(argv):
     if len(argv) != 2:
         sys.exit(__doc__)
@@ -122,6 +129,7 @@ def main(argv):
         sys.exit(f"[patch_read_html] 錯誤：<head> 應該剛好 1 行，實際 {len(head)} 行")
     lines.insert(head[0] + 1, ERROR_PANEL.rstrip("\n"))
     lines.insert(head[0] + 2, EARLY.format().rstrip("\n"))
+    lines.insert(head[0] + 3, EARLY_HIDE)
     # 放在 <body> 一開頭：放進 #main 裡會被頁面原本的樣式（隱藏未初始化的閱讀區）一起藏掉
     body_open = [i for i, l in enumerate(lines) if l.lstrip().startswith("<body")]
     if len(body_open) != 1 or not lines[body_open[0]].rstrip().endswith(">"):
