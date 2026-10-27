@@ -267,9 +267,12 @@ with sync_playwright() as p:
     check('「關於」是最後一個分組、預設收起、舊的最底下版本行已移除', ab['last'] in ('關於', 'About') and ab['hidden'] and not ab['old'], ab)
     pg.evaluate("[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group-title')].pop().click()"); pg.wait_for_timeout(300)
     ab = pg.evaluate(AB)
-    check('展開後：版本、打包方式 Docker、說明頁指向 Docker repo、開新分頁、沒有檢查更新、16px',
-          not ab['hidden'] and len(ab['rows']) == 2 and 'Docker' in ab['rows'][1] and len(ab['links']) == 1
-          and ab['links'][0][1] == 'https://github.com/bgtsai/calibre-web-foliate-docker' and ab['links'][0][2] == '_blank' and ab['fs'] == '16px', ab)
+    check('展開後：版本、發布日期、安裝方式 Docker，說明頁（GitHub）指向 Docker repo、開新分頁、沒有檢查更新',
+          not ab['hidden'] and len(ab['rows']) == 3 and re.search(r'\d{4}-\d{2}-\d{2}$', ab['rows'][1]) and ab['rows'][2].endswith('Docker')
+          and len(ab['links']) == 1 and ab['links'][0][0] in ('說明頁（GitHub）', 'Documentation (GitHub)')
+          and ab['links'][0][1] == 'https://github.com/bgtsai/calibre-web-foliate-docker' and ab['links'][0][2] == '_blank', ab)
+    fs = pg.evaluate("(()=>{const r=document.querySelector('.cwfm-about-row');const l=[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')].find(g=>/Language|語言/.test(g.textContent)).querySelector('label');return [getComputedStyle(r.children[0]).fontSize,getComputedStyle(r.children[1]).fontSize,getComputedStyle(document.querySelector('.cwfm-about-links a')).fontSize,getComputedStyle(l).fontSize,getComputedStyle(r.children[0]).color===getComputedStyle(l).color]})()")
+    check('字級跟其他分組一致：名稱 12px（同欄位說明、同色）、內容與連結 13px', fs[:3] == ['12px', '13px', '13px'] and fs[3] == '12px' and fs[4], fs)
     pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-body').scrollTop=1e6"); pg.wait_for_timeout(200)
     pg.screenshot(path=f'v1810_about_{BROWSER}.png')
     pg.close()
