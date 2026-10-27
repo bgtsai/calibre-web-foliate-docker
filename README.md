@@ -110,6 +110,7 @@ The reader is built from the userscript's source at a pinned version, so the fea
 - **Works on older iPhone / iPad.** The reader is converted at build time so that iOS 15's Safari can run it, with missing built-in functions filled in. Some newer functions used only for PDF are not filled in, so opening PDFs on older iOS may fail.
 - **Error panel.** When an error occurs on the reader page, a red "⚠ count" button appears in the bottom-left corner. Tap it to see the error list and copy it in one click — handy for reporting problems from devices without developer tools. If the reader page crashes outright, add `?cwfm=safe` to the reader address: the page then skips loading the reader and shows the error log from the previous attempt.
 - **Server error log (off by default).** In the "Error log" section at the bottom of the reader settings, after reading the privacy notice and choosing "Agree and turn on", the log of a session that hits an error is stored on this server (`/config/cwfm.db`, never sent elsewhere). Users can download their own log (host addresses masked as `<host>`, ready to attach to a GitHub issue) or clear it; signed-in users can also open `<address>/cwfm/api/errlog`. Administrators can add `?all=1` to see every user's log (latest 50 sessions per user).
+- **Coexists with the Tampermonkey version.** If the Tampermonkey version (v1.80.5 or later) is also installed, it detects the Docker build and stops itself, so the two never conflict.
 
 ## Interface language not as expected?
 

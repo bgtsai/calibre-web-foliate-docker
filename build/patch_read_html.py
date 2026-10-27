@@ -67,7 +67,10 @@ BOOT = """    {marker}
             }}
         }});
         // 安全模式（網址加 ?cwfm=safe）不載入閱讀器，只看錯誤面板留下的上一次紀錄。
-        if (!window.__cwfmSafeMode) {{
+        if (window.__cwfmSafeMode) {{
+            var ld = document.getElementById('cwfm-loading');
+            if (ld) ld.parentNode.removeChild(ld);
+        }} else {{
             var s = document.createElement('script');
             s.type = 'module';
             s.src = "{{{{ url_for('static', filename='js/cwfm/cwfm-reader.js') }}}}?v={bust}";
@@ -76,6 +79,21 @@ BOOT = """    {marker}
     }})();
     </script>
 """
+
+
+# v1.80.5：<head> 錯誤面板之後——(1) 標記這是 Docker 版（Tampermonkey 腳本看到就整支停止，兩個同時跑會互相干擾）；
+# (2) 頁面一開始就先下載書檔，跟閱讀器程式本身的下載重疊（閱讀器讀 window.__cwfmBookPrefetch）。安全模式不下載。
+EARLY = """    <meta name="cwfm-docker" content="1">
+    <script type="text/javascript">
+    if (!window.__cwfmSafeMode) {{
+        try {{ window.__cwfmBookPrefetch = fetch('/show/{{{{ bookid }}}}/epub/file.epub', {{ credentials: 'same-origin' }}); }}
+        catch (e) {{ console.error('[cwfm:load] 預先下載書檔失敗', e); }}
+    }}
+    </script>"""
+
+# v1.80.5：載入提示——一開頁就看得到（大檔案下載、解壓期間不要一片黑），閱讀器開好書後移除（安全模式由開機段落移除）。
+# 跟 mod 的 Tampermonkey 外層插入的是同一份樣子；文字之後由閱讀器更新成下載百分比。
+LOADING = """    <div id="cwfm-loading" data-cwfm-owned="true" style="position:fixed;left:0;top:0;right:0;bottom:0;z-index:999990;display:flex;align-items:center;justify-content:center;pointer-events:none;font:15px/1.5 sans-serif;color:#8a8a8a"><div style="display:flex;align-items:center;gap:10px"><span style="width:18px;height:18px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:cwfm-spin 0.8s linear infinite"></span><span id="cwfm-loading-text">正在載入書籍… Loading…</span></div><style>@keyframes cwfm-spin{{to{{transform:rotate(360deg)}}}}</style></div>"""
 
 
 def main(argv):
@@ -103,6 +121,12 @@ def main(argv):
     if len(head) != 1:
         sys.exit(f"[patch_read_html] 錯誤：<head> 應該剛好 1 行，實際 {len(head)} 行")
     lines.insert(head[0] + 1, ERROR_PANEL.rstrip("\n"))
+    lines.insert(head[0] + 2, EARLY.format().rstrip("\n"))
+    # 放在 <body> 一開頭：放進 #main 裡會被頁面原本的樣式（隱藏未初始化的閱讀區）一起藏掉
+    body_open = [i for i, l in enumerate(lines) if l.lstrip().startswith("<body")]
+    if len(body_open) != 1 or not lines[body_open[0]].rstrip().endswith(">"):
+        sys.exit(f"[patch_read_html] 錯誤：<body> 開頭標籤應該剛好 1 行，實際 {len(body_open)} 行")
+    lines.insert(body_open[0] + 1, LOADING.format().rstrip("\n"))
 
     body_end = [i for i, l in enumerate(lines) if l.strip() == "</body>"]
     if len(body_end) != 1:
