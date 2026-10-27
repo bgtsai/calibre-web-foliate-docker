@@ -260,12 +260,18 @@ with sync_playwright() as p:
     check('Esc（焦點在按鈕）也只關對話框、卡片留著', st == [False, True], st)
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
     check('對話框關掉後再按 Esc 才關卡片', pg.evaluate("!document.querySelector('.cwfm-bm-card')"))
-    # v1.80.8：設定面板最底下顯示版本
+    # v1.81.0：「關於」分組在最後、預設收起；展開後有版本、打包方式、說明頁（Docker 版沒有檢查更新）
     pg.click('button[aria-label="設定"], button[aria-label="Settings"]', force=True); pg.wait_for_timeout(600)
-    vl = pg.evaluate("(()=>{const b=document.querySelector('.cwfm-settings-panel .cwfm-panel-body');const v=b&&b.lastElementChild;return v&&v.classList.contains('cwfm-version-line')?[v.textContent,getComputedStyle(v).fontSize]:null})()")
-    check('設定面板最底下顯示版本（16px）', vl is not None and vl[0].startswith('cwfm v') and vl[1] == '16px', vl)
+    AB = "(()=>{const gs=[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')];const g=gs[gs.length-1];const t=g.querySelector('.cwfm-group-title').textContent;const b=g.querySelector('.cwfm-group-body');return {last:t,hidden:getComputedStyle(b).display==='none',rows:[...g.querySelectorAll('.cwfm-about-row')].map(r=>r.textContent),links:[...g.querySelectorAll('.cwfm-about-links a')].map(a=>[a.textContent,a.href,a.target]),fs:g.querySelector('.cwfm-about-row')&&getComputedStyle(g.querySelector('.cwfm-about-row')).fontSize,old:!!document.querySelector('.cwfm-version-line')}})()"
+    ab = pg.evaluate(AB)
+    check('「關於」是最後一個分組、預設收起、舊的最底下版本行已移除', ab['last'] in ('關於', 'About') and ab['hidden'] and not ab['old'], ab)
+    pg.evaluate("[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group-title')].pop().click()"); pg.wait_for_timeout(300)
+    ab = pg.evaluate(AB)
+    check('展開後：版本、打包方式 Docker、說明頁指向 Docker repo、開新分頁、沒有檢查更新、16px',
+          not ab['hidden'] and len(ab['rows']) == 2 and 'Docker' in ab['rows'][1] and len(ab['links']) == 1
+          and ab['links'][0][1] == 'https://github.com/bgtsai/calibre-web-foliate-docker' and ab['links'][0][2] == '_blank' and ab['fs'] == '16px', ab)
     pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-body').scrollTop=1e6"); pg.wait_for_timeout(200)
-    pg.screenshot(path=f'v1808_version_{BROWSER}.png')
+    pg.screenshot(path=f'v1810_about_{BROWSER}.png')
     pg.close()
 
     # ---- 全螢幕不支援：停用外觀＋提示 ----
