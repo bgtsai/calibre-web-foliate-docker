@@ -35,17 +35,20 @@ services:
 
 ### 在 Synology 上一鍵更新
 
-`tools/nas-update.sh`：容器已存在（執行中或停止）就用 Watchtower 只更新這一個容器（拉新映像、有變才重建、清掉舊映像）；容器不存在就用 compose 專案資料夾裡的 `compose.yaml` 建立專案。
+`tools/nas-update.sh`：用 Watchtower 只更新這一個容器（拉新映像、有變才重建、清掉舊映像，停止中的也處理）。**它不會建立容器或專案**——找不到容器時只會提示你到 Container Manager 用 `compose.yaml` 建立專案（從指令列建立的專案，Container Manager 不會列在「專案」裡）。
 
-DSM「控制台 → 工作排程器 → 新增 → 排定的任務 → 使用者定義的指令碼」，「一般」分頁的使用者選 **root**，指令欄只放下面這一行（路徑換成你的 compose 專案資料夾）：
+命名規則：compose 專案資料夾叫 `compose_<名稱>`、容器叫 `<流水號>_<名稱>`（例如 `compose_calibre-web-foliate` 與 `11_calibre-web-foliate`）。腳本放在專案資料夾裡，會從資料夾名稱自動找到容器，**不用填任何設定**。不照這個規則的容器，在最後的 `bash` 前面加 `CONTAINER=實際名稱`。
+
+DSM「控制台 → 工作排程器 → 新增 → 排定的任務 → 使用者定義的指令碼」，「一般」分頁的使用者選 **root**，指令欄只放下面這一行（路徑換成你的專案資料夾）：
 
 ```
 F=/volume1/docker/compose/compose_calibre-web-foliate/nas-update.sh; curl -fsSL -o "$F.new" https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-docker/main/tools/nas-update.sh && head -1 "$F.new" | grep -q '^#!/bin/bash' && bash -n "$F.new" && mv "$F.new" "$F"; rm -f "$F.new"; bash "$F"
 ```
 
-每次執行都會先從 GitHub 抓最新版的腳本，確認是腳本（第一行 `#!/bin/bash`、語法正確）才替換，然後執行；抓不到或內容不對就照跑資料夾裡現有那份。第一次執行就會自動把腳本放進資料夾，不用自己下載。結果寫在同資料夾的 `nas-update.log`。
+每次執行都會先從 GitHub 抓最新版的腳本，確認是腳本（第一行 `#!/bin/bash`、語法正確）才替換，然後執行；抓不到或內容不對就照跑資料夾裡現有那份。第一次執行就會自動把腳本放進資料夾。
 
-- 設定（容器名稱、Container Manager 裡的專案名稱）預設是 `11_calibre-web-foliate`／`calibre-web-foliate`；不同的話在指令最後的 `bash` 前面指定，例如 `CONTAINER=我的容器 PROJECT=我的專案 bash "$F"`。不要改在腳本檔裡——下次執行會被最新版覆蓋
+結果寫在同資料夾的 `nas-update.log`。找不到容器、或找到多個同名容器時：log 會寫原因與該怎麼做，工作排程器顯示執行失敗，DSM 右上角也會跳通知（DSM 有內建通知指令時）。
+
 - 代價：等於每次以 root 執行 GitHub 上當下的腳本內容
 - 改了 `compose.yaml`（例如環境變數）時，要在 Container Manager 重建專案；這支腳本只負責更新映像
 
