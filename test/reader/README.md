@@ -9,6 +9,7 @@ for b in chromium webkit firefox; do
   python3 ft179.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.79：進度、預覽、書籤、搜尋、匯出、CSRF（41 項）
   python3 ft180.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.80：首次預設、跳轉合併、卡片、全螢幕、觸控翻頁、錯誤紀錄卡…
   CWFM_MOD_DIR=../../../calibre-web-foliate-mod python3 ft_load.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # 載入提示、預先下載、TM 遇 Docker 自停
+  python3 ft182.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.82：分組調整、設定檔存全部設定＋面板同步、錯誤面板〔忽略〕
   python3 ft_empty.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # 搜尋空狀態
   CWFM_MOD_DIR=../../../calibre-web-foliate-mod python3 ft_earlyhide.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # v1.81.2：第一個畫面就看不到原生介面（Docker／TM）
   python3 feat_test.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b  # 舊版功能（「縮放後重算…標題固定」是 v1.79 起就失敗的舊測試）

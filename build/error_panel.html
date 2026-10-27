@@ -135,15 +135,22 @@
             var copyBtn = document.createElement('button');
             copyBtn.type = 'button';
             copyBtn.textContent = '複製全部';
+            // 忽略：⚠ 消失、數量歸零，之後有新錯誤才再出現；紀錄本身不刪（複製全部仍拿得到）
+            var ignoreBtn = document.createElement('button');
+            ignoreBtn.type = 'button';
+            ignoreBtn.textContent = '忽略';
             var closeBtn = document.createElement('button');
             closeBtn.type = 'button';
             closeBtn.textContent = '關閉';
             var btnStyle = 'padding:6px 12px;border:0;border-radius:4px;background:#337ab7;color:#fff;font-size:14px;';
             copyBtn.setAttribute('style', btnStyle);
+            ignoreBtn.setAttribute('style', btnStyle + 'background:#555;');
             closeBtn.setAttribute('style', btnStyle + 'background:#555;');
+            ignoreBtn.onclick = function () { errorCount = 0; panel.style.display = 'none'; renderNow(); };
             copyBtn.onclick = function () { copy(allText(), copyBtn); };
             closeBtn.onclick = function () { panel.style.display = 'none'; };
             bar.appendChild(copyBtn);
+            bar.appendChild(ignoreBtn);
             bar.appendChild(closeBtn);
             list = document.createElement('pre');
             list.setAttribute('style', 'margin:0;padding:8px;overflow:auto;white-space:pre-wrap;word-break:break-all;');
