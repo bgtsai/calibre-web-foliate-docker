@@ -232,6 +232,9 @@ with sync_playwright() as p:
     csv = pg.evaluate("window.__cwfm.exportBookmarks('csv')")
     check('匯出旗頭與雙標記', 'class="side f-note both"' in html and 'class="bars' not in html and html.count('class="ico') == 2 and html.count('class="side') == 2 and html.count('class="tag"') >= 4, '')
     check('匯出連結開新分頁', 'target="_blank"' in html)
+    # v1.80.7：頁首數量「備註＋摘錄」兩邊都計入（定位 1、摘錄 1、備註 1）
+    meta = re.search(r'<div class="meta">(.*?)</div>', html).group(1)
+    check('匯出頁首：備註＋摘錄兩邊都計入', re.findall(r' (\d+)(?= ·|$)', meta)[-3:] == ['1', '1', '1'], meta)
     check('匯出連結文字沒有 %', '">http' in html and re.search(r'">[^<]*#cfi=epubcfi\(/6/', html) is not None and '%2F' in html, '')
     check('匯出 HTML/MD/CSV', '這是 $&amp; 備註' in html and '#cfi=' in html and '> ' in md and csv.count('\n') >= 2, len(html))
 

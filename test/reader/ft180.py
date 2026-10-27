@@ -233,6 +233,15 @@ with sync_playwright() as p:
     t2 = pg.evaluate("document.querySelector('.cwfm-bm-dialog').dataset.type")
     check('打備註即時變備註色、清空變回', t1 == 'note' and t2 in ('pos', 'excerpt'), (t1, t2))
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    # v1.80.7：Esc 一次只關最上層（焦點在輸入框、在按鈕上都一樣）
+    st = pg.evaluate("[!!document.querySelector('.cwfm-bm-dialog'), !!document.querySelector('.cwfm-bm-card')]")
+    check('Esc（焦點在備註欄）只關對話框、卡片留著', st == [False, True], st)
+    pg.click('.cwfm-bm-card button:has-text("Edit"), .cwfm-bm-card button:has-text("編輯")'); pg.wait_for_timeout(500)
+    pg.focus('.cwfm-bm-dialog .cwfm-confirm-cancel'); pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    st = pg.evaluate("[!!document.querySelector('.cwfm-bm-dialog'), !!document.querySelector('.cwfm-bm-card')]")
+    check('Esc（焦點在按鈕）也只關對話框、卡片留著', st == [False, True], st)
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    check('對話框關掉後再按 Esc 才關卡片', pg.evaluate("!document.querySelector('.cwfm-bm-card')"))
     pg.close()
 
     # ---- 全螢幕不支援：停用外觀＋提示 ----
