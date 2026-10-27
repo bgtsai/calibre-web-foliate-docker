@@ -39,7 +39,7 @@ It is based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/d
 > **If the reader will not open at all, start here.**
 > 1. Sign in to Calibre-Web, then open **`http://<your Calibre-Web address>/cwfm/api/errlog`** to see your own error logs (requires "Save error logs to the server" to be turned on in the settings beforehand).
 >    - For example, if you normally open Calibre-Web at `http://192.168.1.100:8083`, type **`http://192.168.1.100:8083/cwfm/api/errlog`** into the address bar.
->    - `<` `>` only mean "replace with your own address" — **do not type them**. The address is the part before the first `/` in the address bar when you use Calibre-Web (an IP with a port, or a domain name such as `https://books.example.com`).
+>    - `<` `>` only mean "replace with your own address" — **do not type them**. The address is the part of the address bar before paths such as `/read/…` or `/book/…` when you use Calibre-Web (an IP with a port, or a domain name such as `https://books.example.com`).
 > 2. If even the reader page crashes, add **`?cwfm=safe`** to the reader address: the page skips the reader and shows only the last error log saved in this browser.
 >    - For example, if the reader address is `http://192.168.1.100:8083/read/123/epub`, open **`http://192.168.1.100:8083/read/123/epub?cwfm=safe`** instead.
 
