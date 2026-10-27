@@ -35,22 +35,13 @@ It is based on [linuxserver/docker-calibre-web](https://github.com/linuxserver/d
 
 ### One-click update on Synology
 
-`tools/nas-update.sh`: Watchtower updates just this one container (pull, recreate only if the image changed, remove the old image; stopped containers included). **It never creates a container or project** — if the container is missing it only tells you to create the project from `compose.yaml` in Container Manager (projects created from the command line are not listed under Container Manager's Projects).
-
-Naming convention: the compose project folder is `compose_<name>` and the container is `<number>_<name>` (e.g. `compose_calibre-web-foliate` and `11_calibre-web-foliate`). Put the script in the project folder and it finds the container from the folder name — **no settings to fill in**. For a container that doesn't follow this, add `CONTAINER=actual-name` before the final `bash`.
-
-DSM "Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script"; on the General tab set the user to **root**, and put only this line in the command box (change the path to your project folder):
+Use [synology-docker-update](https://github.com/bgtsai/synology-docker-update): create a Task Scheduler task (user **root**) with only this line in the command box, and press "Run" when you want to update:
 
 ```
-F=/volume1/docker/compose/compose_calibre-web-foliate/nas-update.sh; curl -fsSL -o "$F.new" https://raw.githubusercontent.com/bgtsai/calibre-web-foliate-docker/main/tools/nas-update.sh && head -1 "$F.new" | grep -q '^#!/bin/bash' && bash -n "$F.new" && mv "$F.new" "$F"; rm -f "$F.new"; bash "$F"
+F=/volume1/docker/compose/compose_calibre-web-foliate/nas-update.sh; curl -fsSL -o "$F.new" https://raw.githubusercontent.com/bgtsai/synology-docker-update/main/nas-update.sh && head -1 "$F.new" | grep -q '^#!/bin/bash' && bash -n "$F.new" && mv "$F.new" "$F"; rm -f "$F.new"; bash "$F"
 ```
 
-Every run first downloads the latest script from GitHub and replaces the local copy only if it really is the script (first line `#!/bin/bash`, valid syntax), then runs it; if the download fails or looks wrong, the existing copy runs. The first run puts the script into the folder for you.
-
-Results go to `nas-update.log` in the same folder. If the container is missing or several match: the log says why and what to do, Task Scheduler shows the run as failed, and DSM shows a notification (when DSM's built-in notify command is available).
-
-- Trade-off: every run executes whatever the script on GitHub currently is, as root
-- If you change `compose.yaml` (e.g. environment variables), recreate the project in Container Manager; this script only updates the image
+See that repo's README for details (naming convention, what happens if the container is missing, caveats). If you change `compose.yaml`, recreate the project in Container Manager; the tool only updates the image.
 
 ## When something goes wrong: error logs and reporting
 
