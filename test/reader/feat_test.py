@@ -128,8 +128,8 @@ with sync_playwright() as p:
     page.set_viewport_size({'width': 700, 'height': 760}); page.wait_for_timeout(900)
     info2 = page.evaluate("""(()=>{const p=document.querySelector('.cwfm-settings-panel');const body=p.querySelector('.cwfm-panel-body');const fw=p.querySelector('.cwfm-fields-wrap');
       body.scrollTop=400; const hdr=p.querySelector('.cwfm-panel-header').getBoundingClientRect();
-      return {cols:fw.querySelectorAll(':scope>.cwfm-masonry-col').length, hscroll: body.scrollWidth>body.clientWidth+1, headerTop: Math.round(hdr.top), headerW: Math.round(hdr.width), panelW: Math.round(p.getBoundingClientRect().width)}})()""")
-    check('縮放後重算且只上下捲、標題固定', info2['cols'] < max(info['cols'], 2) and not info2['hscroll'] and info2['headerTop'] == 0 and info2['headerW'] == info2['panelW'], info2)
+      return {cols:fw.querySelectorAll(':scope>.cwfm-masonry-col').length, hscroll: body.scrollWidth>body.clientWidth+1, headerTop: Math.round(hdr.top), panelTop: Math.round(p.getBoundingClientRect().top), headerW: Math.round(hdr.width), panelW: Math.round(p.getBoundingClientRect().width)}})()""")
+    check('縮放後重算且只上下捲、標題固定', info2['cols'] < max(info['cols'], 2) and not info2['hscroll'] and info2['headerTop'] == info2['panelTop'] and info2['headerW'] == info2['panelW'], info2)
     page.screenshot(path=f'{OUT}/feat_{BROWSER}_{int(PRECISE)}_panel.png')
     order = page.evaluate("[...document.querySelectorAll('.cwfm-masonry-col')].map(c=>c.children.length)")
     page.evaluate("(()=>{const g=document.querySelector('.cwfm-group');const d=document.createElement('div');d.style.height='1500px';d.className='cwfm-test-pad';g.appendChild(d)})()")

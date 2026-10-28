@@ -144,7 +144,8 @@ with sync_playwright() as p:
 
     # ---- 電腦（滑鼠）：首次預設 ----
     ctx = b.new_context(viewport={'width': 1100, 'height': 780})
-    pg = page(ctx)
+    # 首次預設的公式取 screen 短邊；無頭 Firefox 的 screen 不跟視窗走（Playwright 的 screen 參數也不吃），固定成跟視窗一樣
+    pg = page(ctx, init="for(const k of ['width','availWidth'])Object.defineProperty(screen,k,{get:()=>1100});for(const k of ['height','availHeight'])Object.defineProperty(screen,k,{get:()=>780});")
     check('開好書後載入提示已移除', pg.evaluate("!document.getElementById('cwfm-loading')"))
     st = pg.evaluate(SET)
     check('電腦首次預設：1 欄、內容優先、540×648、字級 120%', st['maxColumnCount'] == 1 and st['horizontalSizeMode'] == 'content' and st['targetContentWidthPx'] == 540
@@ -283,10 +284,12 @@ with sync_playwright() as p:
     check('不支援全螢幕時按鈕停用外觀', fs.get_attribute('aria-disabled') == 'true')
     fs.dispatch_event('click'); pg.wait_for_timeout(300)
     check('點停用的全螢幕鈕跳提示', pg.evaluate("[...document.querySelectorAll('.cwfm-toast')].map(e=>e.textContent).join()") in ('該瀏覽器不支援全螢幕', 'This browser does not support fullscreen'))
+    BADGE = "[...document.querySelectorAll('button')].filter(b=>/^⚠/.test(b.textContent)&&getComputedStyle(b).display!=='none').map(b=>b.textContent)"
+    badge0 = pg.evaluate(BADGE)  # 從頭開書時偶爾會先有一則已知的「初始鎖定失敗」⚠ 1，只比較觸發前後有沒有增加
     n0 = len([h for h in hits if 'errlog' in h[1]])
     pg.evaluate("window.dispatchEvent(new ErrorEvent('error',{message:'Script error.'}))"); pg.wait_for_timeout(6500)
-    badge = pg.evaluate("[...document.querySelectorAll('button')].filter(b=>/^⚠/.test(b.textContent)&&getComputedStyle(b).display!=='none').map(b=>b.textContent)")
-    check('沒有檔名的 Script error 不亮 ⚠；預設沒同意就不上傳', not badge and len([h for h in hits if 'errlog' in h[1]]) == n0, badge)
+    badge = pg.evaluate(BADGE)
+    check('沒有檔名的 Script error 不讓 ⚠ 增加；預設沒同意就不上傳', badge == badge0 and len([h for h in hits if 'errlog' in h[1]]) == n0, badge)
     # 設定面板：錯誤紀錄區、同意後才開、下載遮主機、清除
     pg.evaluate("document.querySelectorAll('.cwfm-toolbar-top button')[document.querySelectorAll('.cwfm-toolbar-top button').length-2].click()"); pg.wait_for_timeout(800)
     has = pg.evaluate("(()=>{const c=document.querySelector('.cwfm-errlog-card');return !!c && c.querySelectorAll('li').length===5 && !!c.querySelector('.cwfm-switch input') && !!c.querySelector('.cwfm-errlog-buttons')})()")

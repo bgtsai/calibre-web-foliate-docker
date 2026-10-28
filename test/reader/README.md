@@ -14,7 +14,7 @@ for b in chromium webkit firefox; do
   python3 ft_keys.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b     # v1.82.2：快速鍵在各種介面狀態下該不該翻頁（第一章 iframe、進度條、目錄、設定、搜尋、對話框）
   python3 ft_empty.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # 搜尋空狀態
   CWFM_MOD_DIR=../../../calibre-web-foliate-mod python3 ft_earlyhide.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # v1.81.2：第一個畫面就看不到原生介面（Docker／TM）
-  python3 feat_test.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b  # 舊版功能（「縮放後重算…標題固定」是 v1.79 起就失敗的舊測試）
+  python3 feat_test.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b  # 舊版功能
 done
 python3 ft_zh2.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js chromium   # 中文介面
 python3 ft_ipad.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js webkit    # iPad 尺寸
