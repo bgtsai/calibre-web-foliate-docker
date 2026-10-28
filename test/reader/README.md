@@ -12,6 +12,7 @@ for b in chromium webkit firefox; do
   python3 ft182.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.82：分組調整、設定檔存全部設定＋面板同步、錯誤面板〔忽略〕
   python3 ft_icons.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b    # v1.82.1：標籤小圖示、步進器 − ＋ 是 SVG 且垂直置中（±0.5px，截圖寫到 OUT_DIR，預設 /tmp）
   python3 ft_keys.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b     # v1.82.2：快速鍵在各種介面狀態下該不該翻頁（第一章 iframe、進度條、目錄、設定、搜尋、對話框）
+  python3 ft183.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.83.0：跳轉紀錄 99+／提示、上一步與書籤的存檔動畫、減少動態效果改淡入（截圖寫到 OUT_DIR）
   python3 ft_empty.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # 搜尋空狀態
   CWFM_MOD_DIR=../../../calibre-web-foliate-mod python3 ft_earlyhide.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # v1.81.2：第一個畫面就看不到原生介面（Docker／TM）
   python3 feat_test.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b  # 舊版功能
