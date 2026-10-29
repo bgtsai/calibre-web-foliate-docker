@@ -44,7 +44,7 @@ with sync_playwright() as p:
     info = pg.evaluate(f"(()=>{{const v={V};return {{img:!!window.__cwfm.imageBook,ids:v.book.sections.map(s=>s.id),dir:v.book.dir,cols:window.__cwfm.settings.maxColumnCount,lr:window.__cwfm.settings.leftRightPadding,gap:window.__cwfm.settings.columnGapPx}}}})()")
     check('判斷為圖片書', info['img'], info)
     check('略過重複封面、每段 12 頁（30 頁 → 3 段）', info['ids'] == ['cwfm-seg-0-1', 'cwfm-seg-1-13', 'cwfm-seg-2-25'], info['ids'])
-    check('第一次開圖片書套內建「圖片書」：兩欄、左右留白 16、欄間距 0', info['cols'] == 2 and info['lr'] == 16 and info['gap'] == 0, info)
+    check('第一次開圖片書套內建「圖片書」：橫向畫面兩欄、左右留白 0、欄間距 0', info['cols'] == 2 and info['lr'] == 0 and info['gap'] == 0, info)
     check('沒有標示翻頁方向 → 預設左翻', info['dir'] == 'ltr', info['dir'])
     vis = pg.evaluate(f"(()=>{{const d={V}.renderer.getContents()[0].doc;const fr=d.defaultView.frameElement.getBoundingClientRect();return [...d.querySelectorAll('.cwfm-ib-p')].map(e=>{{const r=e.getBoundingClientRect();return [e.dataset.orig, Math.round(r.left+fr.left)]}}).filter(x=>x[1]>=0&&x[1]<1180)}})()")
     check('畫面上並排兩頁（第 1、2 頁，左→右）', [v[0] for v in vis] == ['1', '2'] and vis[0][1] < vis[1][1], vis)
@@ -129,12 +129,12 @@ with sync_playwright() as p:
     blank = pg.evaluate(f"(()=>{{const d={V}.renderer.getContents()[0].doc;const b=d.querySelector('.cwfm-ib-blank');return b&&b.nextElementSibling&&b.nextElementSibling.dataset.orig}})()")
     check('空白頁插在目前那頁前面（補頁後跨頁變成 4、5）', blank in ('4', '5'), blank)
     pg.evaluate(f"{V}.goTo('epubcfi(/6/4!/4)')"); pg.wait_for_timeout(1500)
-    sp = pg.evaluate(f"(()=>{{const d={V}.renderer.getContents()[0].doc;const s=d.querySelector('.cwfm-ib-start');return s?[s.querySelector('.cwfm-ib-title').textContent,s.querySelector('button').textContent,s.nextElementSibling.dataset.orig]:null}})()")
-    check('開始頁在封面前（書名、← 開始閱讀）', sp == ['日本兄弟', '← 開始閱讀', '1'], sp)
+    sp = pg.evaluate(f"(()=>{{const d={V}.renderer.getContents()[0].doc;const s=d.querySelector('.cwfm-ib-start');return s?[s.querySelector('.cwfm-ib-title').textContent,!!s.querySelector('button'),s.nextElementSibling.dataset.orig,s.querySelector('.cwfm-ib-author').textContent,(s.querySelector('.cwfm-tp-pub')||{{}}).textContent,s.querySelectorAll('.cwfm-tp-rule').length]:null}})()")
+    check('開始頁在封面前：古典扉頁（書名、作者 著、上下分隔線、最下緣出版社，沒有按鈕）', sp == ['日本兄弟', False, '1', '松本大洋　著', '大塊文化', 2], sp)
     pg.screenshot(path=f'{OUT_DIR}/v184_start_{BR}.png')
     check('開始頁不算位置：CFI 仍是第 1 頁', orig_index(pg.evaluate(CFI)) == 1, pg.evaluate(CFI))
-    pg.evaluate(f"{V}.renderer.getContents()[0].doc.querySelector('.cwfm-ib-startbtn').click()"); pg.wait_for_timeout(1000)
-    check('按「開始閱讀」→ 下一個跨頁（第 2 頁起）', orig_index(pg.evaluate(CFI)) == 2, pg.evaluate(CFI))
+    pg.keyboard.press('ArrowLeft'); pg.wait_for_timeout(1000)
+    check('從開始頁翻下一頁（右翻 ←）→ 下一個跨頁（第 2 頁起）', orig_index(pg.evaluate(CFI)) == 2, pg.evaluate(CFI))
     ls = pg.evaluate(LS)
     bk = (ls.get('bookSettings') or {}).get(str(BOOK_ID)) or {}
     check('這本書記住：右翻、補一頁、插頁位置', (bk.get('b') or {}).get('pageDirection') == 'rtl' and bk['b'].get('frontInsert') is True and len(bk['b'].get('insertsBefore') or []) == 1, bk.get('b'))
@@ -154,7 +154,7 @@ with sync_playwright() as p:
     pg.close()
     pg = page()
     tinfo = pg.evaluate(f"(()=>{{const v={V};return [!!window.__cwfm.imageBook, v.book.sections.length, v.book.dir, window.__cwfm.settings.leftRightPadding]}})()")
-    check('文字書：不是圖片書、章節不變、左翻、留白不是圖片書的 16', tinfo[0] is False and tinfo[1] == 2 and tinfo[2] == 'ltr' and tinfo[3] != 16, tinfo)
+    check('文字書：不是圖片書、章節不變、左翻、留白不是圖片書的 0', tinfo[0] is False and tinfo[1] == 2 and tinfo[2] == 'ltr' and tinfo[3] != 0, tinfo)
     # 內建設定檔標籤
     open_panel(pg)
     chips = pg.evaluate("""(()=>{const g=[...document.querySelectorAll('.cwfm-settings-panel .cwfm-keylist')];
@@ -170,7 +170,7 @@ with sync_playwright() as p:
     pg.screenshot(path=f'{OUT_DIR}/v184_panel_{BR}.png')
     pg.evaluate("[...document.querySelectorAll('.cwfm-keychip-builtin')].find(c=>c.textContent==='圖片書').querySelector('.cwfm-keychip-text').click()"); pg.wait_for_timeout(800)
     s2 = pg.evaluate("[window.__cwfm.settings.maxColumnCount, window.__cwfm.settings.leftRightPadding]")
-    check('套用「圖片書」：兩欄、留白 16', s2 == [2, 16], s2)
+    check('套用「圖片書」：兩欄、留白 0', s2 == [2, 0], s2)
     # 覆蓋更新 → 出現恢復預設值；恢復後消失
     pg.evaluate("window.__cwfm.settings.leftRightPadding=40")
     pg.evaluate("[...document.querySelectorAll('.cwfm-keychip-builtin')].find(c=>c.textContent==='圖片書').querySelector('.cwfm-keychip-rename').click()"); pg.wait_for_timeout(400)

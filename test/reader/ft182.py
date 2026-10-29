@@ -7,7 +7,7 @@ with sync_playwright() as p:
     pg.goto(URL); pg.wait_for_timeout(3500)
     pg.click('button[aria-label="設定"], button[aria-label="Settings"]', force=True); pg.wait_for_timeout(800)
     titles = pg.evaluate("[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group-title')].map(e=>e.textContent.trim())")
-    want = ['Profile', 'Apply Colors', 'Font', 'Typography', 'Layout', 'Page Insertion', 'Page Turning', 'Auto-Hide', 'Reading Behavior', 'Shortcuts', '語言 / Language']
+    want = ['Profile', 'Apply Colors', 'Font', 'Typography', 'Layout', 'Page Insertion', 'Page Turning', 'Auto-Hide', 'Reading Records', 'Shortcuts', '語言 / Language']
     check('分組順序與名稱', titles[:len(want)] == want, titles)
     grp = lambda name: f"[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')].find(g=>g.querySelector('.cwfm-group-title').textContent.trim()==='{name}')"
     labels = lambda name: pg.evaluate(f"[...({grp(name)}).querySelectorAll('.cwfm-group-body label')].map(l=>l.textContent.trim()).filter(Boolean)")

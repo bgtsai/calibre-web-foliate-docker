@@ -8,6 +8,8 @@ from PIL import Image
 def measure(pg, parent_js, name):
     # parent_js：回傳父元素（標籤或步進器）的 JS 運算式；量父元素內每個按鈕／圖示的墨水，相對父元素中心
     pg.evaluate(f"window.__mp = {parent_js}")
+    # v1.85.0：設定檔分組多了「新書開啟時套用」，下面的分組可能在畫面外——先捲進畫面再截圖
+    pg.evaluate("__mp.scrollIntoView({block:'center'})"); pg.wait_for_timeout(200)
     pb=pg.evaluate("(()=>{const r=__mp.getBoundingClientRect();return [r.x,r.y,r.width,r.height]})()")
     kids=pg.evaluate("""(()=>{const r0=__mp.getBoundingClientRect();return [...__mp.querySelectorAll('button,.cwfm-keychip-icon')].map(e=>{const r=e.getBoundingClientRect();return [e.className.split(' ')[0],r.x-r0.x,r.y-r0.y,r.width,r.height]})})()""")
     png=pg.screenshot(clip=dict(x=pb[0],y=pb[1],width=pb[2],height=pb[3])); im=Image.open(io.BytesIO(png)).convert('RGB'); s=im.size[0]/pb[2]
