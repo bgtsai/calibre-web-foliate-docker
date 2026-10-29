@@ -5,7 +5,7 @@
 import sys, os, json, re, io, zipfile
 exec(open('ft180.py').read().split("with sync_playwright() as p:")[0])
 TEXT_EPUB = EPUB
-IMG_EPUB = open(os.environ.get('CWFM_EPUB', '/home/claude/testbook/manga30.epub'), 'rb').read()
+IMG_EPUB = __import__('make_image_epub').default_image_epub()  # v1.87.0：預設現場產生測試用圖片書，CWFM_EPUB 可指定真書
 OUT_DIR = os.environ.get('OUT_DIR', '/tmp')
 V = "document.querySelector('foliate-view')"
 S = "window.__cwfm.settings"
@@ -26,7 +26,7 @@ def open_panel(pg):
 
 
 def close_panel(pg):
-    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-header button')?.click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-header .cwfm-close-btn')?.click()"); pg.wait_for_timeout(400)
 
 
 with sync_playwright() as p:
@@ -51,7 +51,12 @@ with sync_playwright() as p:
     # ---------- 1. 圖片書＋墨金配色（黑底黃字）：虛擬頁仍是白紙黑字；扉頁甲 ----------
     EPUB = IMG_EPUB
     ctx = b.new_context(viewport={'width': 1200, 'height': 800}, locale='zh-TW')
-    pg = page(ctx, {'activeColorTheme': 'old_gold', 'themeName': 'custom', 'customTextColor': '#e8c66a', 'customBackgroundColor': '#111111', 'customTextColorEnabled': True, 'customBackgroundColorEnabled': True})
+    OG = {'activeColorTheme': 'old_gold', 'themeName': 'custom', 'customTextColor': '#e8c66a', 'customBackgroundColor': '#111111', 'customTextColorEnabled': True, 'customBackgroundColorEnabled': True}
+    # v1.87.0：設定值屬於設定檔，用「新書開啟時套用」指定一個墨金配色的圖片書設定檔
+    IMGLAY = {'flow': 'paginated', 'horizontalSizeMode': 'margin', 'verticalSizeMode': 'margin', 'leftRightPadding': 0, 'topBottomPadding': 0, 'columnGapPx': 0,
+             'maxColumnCount': 2, 'pageDirection': 'rtl', 'preferBookDirection': True, 'reverseTapZones': True}  # 同內建圖片書的排版（扉頁位置要跟下面用內建開的那次比）
+    pg = page(ctx, {'savedThemes': [{'id': 'G', 'name': 'G', 'values': {**OG, **IMGLAY}}], 'newBookProfile': {'image': 'theme:G'}})
+    check('墨金設定檔有套用到圖片書', pg.evaluate(f"{S}.customBackgroundColor") == '#111111', pg.evaluate(f"{S}.customBackgroundColor"))
     pg.evaluate("window.__cwfm.setFrontInsert(true)"); pg.wait_for_timeout(1800)
     pg.evaluate(f"{V}.goTo('epubcfi(/6/4!/4)')"); pg.wait_for_timeout(2500)
     g = tp_geom(pg)
@@ -69,7 +74,7 @@ with sync_playwright() as p:
     # 沒有出版社：出版社隱藏、上面位置不變
     EPUB = with_opf(IMG_EPUB, lambda o: re.sub(r'<dc:publisher>[^<]*</dc:publisher>', '', o))
     ctx = b.new_context(viewport={'width': 1200, 'height': 800}, locale='zh-TW')
-    pg = page(ctx)
+    pg = page(ctx, {'savedThemes': [{'id': 'G', 'name': 'G', 'values': {**OG, **IMGLAY}}], 'newBookProfile': {'image': 'theme:G'}})  # 跟上面同一組設定，只差有沒有出版社
     pg.evaluate("window.__cwfm.setFrontInsert(true)"); pg.wait_for_timeout(1800)
     pg.evaluate(f"{V}.goTo('epubcfi(/6/4!/4)')"); pg.wait_for_timeout(2500)
     g3 = tp_geom(pg)
@@ -96,7 +101,8 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={'width': 1200, 'height': 800}, locale='zh-TW')
     pg = page(ctx, {'bookSettings': {str(BOOK_ID): {'v': {'maxColumnCount': 2}, 'b': {'pageDirection': 'ltr'}, 't': 1}}})
     d = pg.evaluate(f"[{V}.book.dir, {S}.pageDirection, {S}.preferBookDirection]")
-    check('v1.85 記住的方向（左翻）升級後照舊', d == ['ltr', 'ltr', False], d)
+    # v1.87.0：設定值屬於設定檔（共用），舊方向只決定這本書實際的方向，不寫進設定值
+    check('v1.85 記住的方向（左翻）升級後照舊（設定值仍是設定檔的右翻）', d == ['ltr', 'rtl', True], d)
     pg.close(); ctx.close()
 
     # ---------- 3. 面板：插頁設定、分隔線、紅框、新書套用不換行、自動隱藏說明 ----------
@@ -130,7 +136,8 @@ with sync_playwright() as p:
         sl.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,400));
         const st=document.querySelector('.cwfm-settings-panel');
         return {maxInput:Math.max(...ts), shown:sl.closest('.cwfm-field').querySelector('.cwfm-value-input').value, setting:window.__cwfm.settings.fontSize,
-          savedMid:midSaved, saved0, savedEnd:JSON.parse(localStorage.getItem('cwfm-settings')||'{}').bookSettings?.['%d']?.v?.fontSize}})()""" % BOOK_ID)
+          savedMid:midSaved, saved0, savedEnd:(()=>{const st=JSON.parse(localStorage.getItem('cwfm-settings')||'{}');const ref=st.bookSettings?.['%d']?.profile||'';
+            return (st.savedThemes||[]).find(x=>'theme:'+x.id===ref)?.values?.fontSize})()}})()""" % BOOK_ID)
     check('滑桿拖動：每格處理 < 15ms（不同步重排）、數字即時跟著走、放開後套用並存檔最終值', sl['maxInput'] < 15 and sl['shown'] == '220' and sl['setting'] == 220 and sl['savedEnd'] == 220, sl)
     ah = pg.evaluate("[...document.querySelectorAll('.cwfm-settings-panel label')].find(l=>/自動隱藏工具列/.test(l.textContent)).textContent")
     check('自動隱藏工具列說明提到手指點一下', '手指' in ah, ah)

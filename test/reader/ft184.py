@@ -1,11 +1,11 @@
 # v1.84.0：圖片書多欄並排、翻頁方向、反轉點擊區、插頁、內建設定檔、設定跟著書、「上一步」動畫方案 E
 # 用法：CWFM_EPUB=<純圖片 EPUB> python3 ft184.py <dp.html> <dr.js> <瀏覽器>
-#   CWFM_EPUB 預設 /home/claude/testbook/manga30.epub（「日本兄弟」修剪成約 30 頁：cover＋29 頁，每頁一張圖，
-#   cover 與第 1 頁同一張圖、沒有標翻頁方向）。截圖寫到 OUT_DIR（預設 /tmp）。
+#   CWFM_EPUB 沒指定時用 make_image_epub.py 現場產生（cover＋30 頁、每頁一張 1650×2390 圖，
+#   cover 與第 1 頁同一張圖、沒有標翻頁方向；v1.87.0 起取代真書「日本兄弟」修剪版）。截圖寫到 OUT_DIR（預設 /tmp）。
 import sys, os, json
 exec(open('ft180.py').read().split("with sync_playwright() as p:")[0])
 TEXT_EPUB = EPUB
-IMG_EPUB = open(os.environ.get('CWFM_EPUB', '/home/claude/testbook/manga30.epub'), 'rb').read()
+IMG_EPUB = __import__('make_image_epub').default_image_epub()  # v1.87.0：預設現場產生測試用圖片書，CWFM_EPUB 可指定真書
 OUT_DIR = os.environ.get('OUT_DIR', '/tmp')
 V = "document.querySelector('foliate-view')"
 CFI = V + ".lastLocation.cfi"
@@ -23,14 +23,18 @@ def open_panel(pg):
 
 
 def close_panel(pg):
-    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-header button')?.click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-header .cwfm-close-btn')?.click()"); pg.wait_for_timeout(400)
 
 
 with sync_playwright() as p:
     BR = sys.argv[3]; b = getattr(p, BR).launch()
     ctx = b.new_context(viewport={'width': 1200, 'height': 800}, locale='zh-TW')
-    # v1.86.0 起內建「圖片書」預設右翻＋反轉點擊區；這支測 v1.84 的功能（左翻開始、再手動改右翻），先把內建圖片書覆蓋回左翻
-    ctx.add_init_script("if(!sessionStorage.getItem('s')&&!localStorage.getItem('cwfm-seeded')){localStorage.setItem('cwfm-settings',JSON.stringify({builtinProfiles:{image:{pageDirection:'ltr',reverseTapZones:false}}}));localStorage.setItem('cwfm-seeded','1')}")
+    # v1.86.0 起內建「圖片書」預設右翻＋反轉點擊區；這支測 v1.84 的功能（左翻開始、再手動改右翻）。
+    # v1.87.0 內建唯讀，改成新圖片書套用一個「左翻圖片書」自訂設定檔（其他排版同內建圖片書）
+    LTR = {'pageDirection': 'ltr', 'preferBookDirection': True, 'reverseTapZones': False, 'flow': 'paginated', 'maxColumnCount': 2,
+           'leftRightPadding': 0, 'topBottomPadding': 0, 'columnGapPx': 0, 'horizontalSizeMode': 'margin', 'verticalSizeMode': 'margin'}
+    SEED = {'savedThemes': [{'id': 'L', 'name': '左翻圖片書', 'values': LTR, 'fontWasUpload': False}], 'newBookProfile': {'image': 'theme:L'}}
+    ctx.add_init_script("if(!sessionStorage.getItem('s')&&!localStorage.getItem('cwfm-seeded')){localStorage.setItem('cwfm-settings',%s);localStorage.setItem('cwfm-seeded','1')}" % json.dumps(json.dumps(SEED)))
     errs = []
 
     def page():
@@ -132,14 +136,16 @@ with sync_playwright() as p:
     check('空白頁插在目前那頁前面（補頁後跨頁變成 4、5）', blank in ('4', '5'), blank)
     pg.evaluate(f"{V}.goTo('epubcfi(/6/4!/4)')"); pg.wait_for_timeout(1500)
     sp = pg.evaluate(f"(()=>{{const d={V}.renderer.getContents()[0].doc;const s=d.querySelector('.cwfm-ib-start');return s?[s.querySelector('.cwfm-ib-title').textContent,!!s.querySelector('button'),s.nextElementSibling.dataset.orig,s.querySelector('.cwfm-ib-author').textContent,(s.querySelector('.cwfm-tp-pub')||{{}}).textContent,s.querySelectorAll('.cwfm-tp-rule').length]:null}})()")
-    check('開始頁在封面前：古典扉頁（書名、作者 著、上下分隔線、最下緣出版社，沒有按鈕）', sp == ['日本兄弟', False, '1', '松本大洋　著', '大塊文化', 2], sp)
+    check('開始頁在封面前：古典扉頁（書名、作者 著、上下分隔線、最下緣出版社，沒有按鈕）', sp == ['測試漫畫', False, '1', '測試作者　著', '測試出版社', 2], sp)
     pg.screenshot(path=f'{OUT_DIR}/v184_start_{BR}.png')
     check('開始頁不算位置：CFI 仍是第 1 頁', orig_index(pg.evaluate(CFI)) == 1, pg.evaluate(CFI))
     pg.keyboard.press('ArrowLeft'); pg.wait_for_timeout(1000)
     check('從開始頁翻下一頁（右翻 ←）→ 下一個跨頁（第 2 頁起）', orig_index(pg.evaluate(CFI)) == 2, pg.evaluate(CFI))
     ls = pg.evaluate(LS)
     bk = (ls.get('bookSettings') or {}).get(str(BOOK_ID)) or {}
-    check('這本書記住：右翻（v1.86.0 起是一般設定，存在 v）、補一頁、插頁位置', (bk.get('v') or {}).get('pageDirection') == 'rtl' and (bk.get('b') or {}).get('frontInsert') is True and len(bk['b'].get('insertsBefore') or []) == 1, [ (bk.get('v') or {}).get('pageDirection'), bk.get('b')])
+    th = next((x for x in ls.get('savedThemes') or [] if 'theme:' + x['id'] == bk.get('profile')), {})
+    # v1.87.0：右翻存回這本書用的設定檔（左翻圖片書），書本身只記指向哪個設定檔＋補一頁、插頁位置
+    check('這本書記住：用「左翻圖片書」且右翻已存回該設定檔、補一頁、插頁位置', bk.get('profile') == 'theme:L' and (th.get('values') or {}).get('pageDirection') == 'rtl' and (bk.get('b') or {}).get('frontInsert') is True and len(bk['b'].get('insertsBefore') or []) == 1, [bk.get('profile'), (th.get('values') or {}).get('pageDirection'), bk.get('b')])
     pg.close()
 
     # ---------- 5. 重開同一本：全部記住 ----------
@@ -166,25 +172,18 @@ with sync_playwright() as p:
         const col=g.find(w=>/跟隨系統/.test(w.textContent));
         const cb=[...col.querySelectorAll('.cwfm-keychip-builtin')].map(c=>!!c.querySelector('.cwfm-keychip-bicon svg'));
         return {b,sep,cb}})()""")
-    check('內建設定檔：文字書、圖片書排最前面，有圖示、沒有刪除鈕、沒有改名（只有覆蓋更新）', chips['b'][0] == ['文字書', True, False, 1] and chips['b'][1][:3] == ['圖片書', True, False], chips['b'])
+    check('內建設定檔：文字書、圖片書排最前面，有圖示、沒有刪除鈕、沒有改名／覆蓋更新鈕（v1.87.0 唯讀）', chips['b'][0] == ['文字書', True, False, 0] and chips['b'][1] == ['圖片書', True, False, 0], chips['b'])
     check('沒有自訂設定檔時不畫分隔線', not chips['sep'])
     check('配色的內建標籤也有圖示', len(chips['cb']) == 5 and all(chips['cb']), chips['cb'])
     pg.screenshot(path=f'{OUT_DIR}/v184_panel_{BR}.png')
     pg.evaluate("[...document.querySelectorAll('.cwfm-keychip-builtin')].find(c=>c.textContent==='圖片書').querySelector('.cwfm-keychip-text').click()"); pg.wait_for_timeout(800)
     s2 = pg.evaluate("[window.__cwfm.settings.maxColumnCount, window.__cwfm.settings.leftRightPadding]")
     check('套用「圖片書」：兩欄、留白 0', s2 == [2, 0], s2)
-    # 覆蓋更新 → 出現恢復預設值；恢復後消失
-    pg.evaluate("window.__cwfm.settings.leftRightPadding=40")
-    pg.evaluate("[...document.querySelectorAll('.cwfm-keychip-builtin')].find(c=>c.textContent==='圖片書').querySelector('.cwfm-keychip-rename').click()"); pg.wait_for_timeout(400)
-    pg.click('.cwfm-confirm-overlay .cwfm-ok-primary, .cwfm-confirm-overlay button.cwfm-confirm-ok'); pg.wait_for_timeout(400)
-    pg.keyboard.press('Enter'); pg.wait_for_timeout(400)
-    over = pg.evaluate(LS).get('builtinProfiles', {}).get('image', {})
-    nbtn = pg.evaluate("[...document.querySelectorAll('.cwfm-keychip-builtin')].find(c=>c.textContent==='圖片書').querySelectorAll('.cwfm-keychip-rename').length")
-    check('覆蓋更新「圖片書」：存下留白 40，多一顆恢復預設值', (over or {}).get('leftRightPadding') == 40 and nbtn == 2, [over and over.get('leftRightPadding'), nbtn])
     close_panel(pg)
-    # 文字書這次有調整（套用圖片書）→ 這本書記住了；圖片書的「最後一次設定」不受影響
+    # v1.87.0：每本書記住「用哪個設定檔」（不再存一份設定值）
     ls = pg.evaluate(LS)
-    check('調整過的文字書記住自己的設定', str(BOOK_ID) in (ls.get('bookSettings') or {}), list((ls.get('bookSettings') or {}).keys()))
+    ent = (ls.get('bookSettings') or {}).get(str(BOOK_ID)) or {}
+    check('切到圖片書後，這本書記住用「圖片書」（沒有 v）', ent.get('profile') == 'builtin:image' and 'v' not in ent, ent)
     pg.close()
 
     # ---------- 7. 上一步存檔動畫（方案 E） ----------

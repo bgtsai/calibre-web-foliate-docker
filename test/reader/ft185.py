@@ -4,7 +4,7 @@
 import sys, os, json, re
 exec(open('ft180.py').read().split("with sync_playwright() as p:")[0])
 TEXT_EPUB = EPUB
-IMG_EPUB = open(os.environ.get('CWFM_EPUB', '/home/claude/testbook/manga30.epub'), 'rb').read()
+IMG_EPUB = __import__('make_image_epub').default_image_epub()  # v1.87.0：預設現場產生測試用圖片書，CWFM_EPUB 可指定真書
 OUT_DIR = os.environ.get('OUT_DIR', '/tmp')
 V = "document.querySelector('foliate-view')"
 S = "window.__cwfm.settings"
@@ -17,7 +17,7 @@ def open_panel(pg):
 
 
 def close_panel(pg):
-    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-header button')?.click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-header .cwfm-close-btn')?.click()"); pg.wait_for_timeout(400)
 
 
 def forget_book(pg):  # 測試伺服器所有書同一個書號：刪掉這本書的紀錄，下一次開就是「新書」

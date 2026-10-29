@@ -1,4 +1,5 @@
 # v1.82：設定面板分組調整、設定檔存全部設定（套用後面板同步、快速鍵就地換）、錯誤面板「忽略」
+# v1.87.0：調整會自動存回選中的設定檔，狀態 B 改在內建「文字書」上做（會自動建立「文字書（已調整）」）
 import sys
 exec(open('ft180.py').read().split("SET = \"window.__cwfm.settings\"")[0])
 S = "window.__cwfm.settings"
@@ -22,6 +23,8 @@ with sync_playwright() as p:
     vals = pg.evaluate(f"{S}.savedThemes[0].values")
     check('存了全部設定（含快速鍵、介面隱藏、內容優先）', all(k in vals for k in ['pagingKeys','bookmarkKeys','autoHideToolbar','tapZoneWidthPx','horizontalSizeMode','targetContentWidthPx','columnGapPx','preciseAnchorAlign','cloudFirst']), sorted(vals))
     check('不存語言、錯誤紀錄、素材庫', not any(k in vals for k in ['uiLanguage','errlogUpload','savedThemes','uploadedFonts','groupCollapsedState']))
+    # v1.87.0：選中的設定檔調整會自動存回——先切到內建「文字書」，狀態 B 才不會寫進 P1
+    pg.evaluate(f"""(()=>{{const g={grp('Profile')}; g.querySelector('.cwfm-keychip[data-cwfm-profile="builtin:text"] .cwfm-keychip-text').click();}})()"""); pg.wait_for_timeout(600)
     # 狀態 B：改值、就地改快速鍵陣列（若沒深拷貝，設定檔會跟著變）
     pg.evaluate(f"""(()=>{{const s={S}; s.autoHideToolbar=false; s.tapZoneWidthPx=200; s.horizontalSizeMode='margin'; s.columnGapPx=10;
         s.cursorAutoHideEnabled=false; s.pageFlipDebounceMs=800; s.pagingKeys.prev.push('KeyB'); window.__keysRef=s.pagingKeys.prev; window.__cwfm.refreshSettingsPanel();}})()""")

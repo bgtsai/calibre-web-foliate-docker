@@ -15,6 +15,10 @@ for b in chromium webkit firefox; do
   python3 ft183.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.83.0：跳轉紀錄 99+／提示、上一步與書籤的存檔動畫、減少動態效果改淡入（截圖寫到 OUT_DIR）
   python3 ft_empty.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # 搜尋空狀態
   CWFM_MOD_DIR=../../../calibre-web-foliate-mod python3 ft_earlyhide.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b   # v1.81.2：第一個畫面就看不到原生介面（Docker／TM）
+  python3 ft184.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.84：圖片書並排、翻頁方向、插頁、上一步動畫（圖片書見下）
+  python3 ft185.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.85：新書開啟時套用、書名頁、文字書插頁、虛擬頁
+  python3 ft186.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.86：翻頁方向一般設定、紙色、扉頁、滑桿不卡
+  python3 ft187.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.87：設定檔自動存回、內建唯讀→（已調整）、書指向設定檔、還原、圖示 14px
   python3 feat_test.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b  # 舊版功能
 done
 python3 ft_zh2.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js chromium   # 中文介面
@@ -26,3 +30,5 @@ python3 ah.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js chromium       # 自�
 - 測試環境已知會出現一則「初始鎖定定位點失敗」（從頭開書時，舊版也有），⚠ 1 屬正常。
 - `shot_readme2.py`：重拍 README 截圖（中文書／英文書各一，`SHOT_TM=1` 拍 Tampermonkey 版——沒有伺服器 API、不會出現錯誤紀錄區）。
 - `read-0.6.27.html` 是 Calibre-Web 原版 `cps/templates/read.html`（對應版本），測試前由 `patch_read_html.py` 修改。
+- 圖片書測試（ft184～187）預設用 `make_image_epub.py` 現場產生的純圖片 EPUB（cover＋30 頁、1650×2390、有書名／作者／出版社）；
+  `CWFM_EPUB=<路徑>` 可改用真書。單獨產生檔案：`python3 make_image_epub.py out.epub [--no-publisher] [--dir rtl|ltr]`。
