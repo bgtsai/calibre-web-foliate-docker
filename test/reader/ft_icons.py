@@ -10,6 +10,8 @@ def measure(pg, parent_js, name):
     pg.evaluate(f"window.__mp = {parent_js}")
     # v1.85.0：設定檔分組多了「新書開啟時套用」，下面的分組可能在畫面外——先捲進畫面再截圖
     pg.evaluate("__mp.scrollIntoView({block:'center'})"); pg.wait_for_timeout(200)
+    # 量的是截圖上的墨水：元素落在小數像素位置時，WebKit 的反鋸齒會讓墨水中心偏 0.5px 左右，捲動量對齊到元素在整數像素上
+    pg.evaluate("(()=>{let s=__mp.parentElement;while(s&&s.scrollHeight<=s.clientHeight)s=s.parentElement;const y=__mp.getBoundingClientRect().y;if(s)s.scrollTop+=y-Math.round(y);})()"); pg.wait_for_timeout(200)
     pb=pg.evaluate("(()=>{const r=__mp.getBoundingClientRect();return [r.x,r.y,r.width,r.height]})()")
     kids=pg.evaluate("""(()=>{const r0=__mp.getBoundingClientRect();return [...__mp.querySelectorAll('button,.cwfm-keychip-icon')].map(e=>{const r=e.getBoundingClientRect();return [e.className.split(' ')[0],r.x-r0.x,r.y-r0.y,r.width,r.height]})})()""")
     png=pg.screenshot(clip=dict(x=pb[0],y=pb[1],width=pb[2],height=pb[3])); im=Image.open(io.BytesIO(png)).convert('RGB'); s=im.size[0]/pb[2]

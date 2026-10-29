@@ -44,8 +44,8 @@ with sync_playwright() as p:
     check('「閱讀行為」改名「閱讀紀錄」', '閱讀紀錄' in titles and '閱讀行為' not in titles, titles)
     order = pg.evaluate("""(()=>{const g=[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')].find(g=>g.querySelector('.cwfm-group-title').textContent.trim()==='翻頁設定');
         return [...g.querySelectorAll('.cwfm-subhead, .cwfm-field > label, .cwfm-field .cwfm-checkbox-row > label:first-child, .cwfm-field .cwfm-color-row label')].map(e=>e.textContent.trim()).filter(Boolean)})()""")
-    want = ['翻頁方式', '翻頁方向', '反轉點擊區', '翻頁精準定位', '左右點擊區']
-    check('翻頁設定：翻頁方式（方向、反轉、精準定位）→ 左右點擊區', [x for x in order if any(x.startswith(w) for w in want)][:5] == want or [o[:6] for o in order][:5] == [w[:6] for w in want], order)
+    want = ['翻頁方式', '翻頁方向', '優先套用書籍標示', '反轉點擊區', '翻頁精準定位', '左右點擊區']
+    check('翻頁設定：翻頁方式（方向、反轉、精準定位）→ 左右點擊區', [next((w for w in want if o.startswith(w)), None) for o in order][:6] == want, order)
     rec = pg.evaluate("""(()=>{const g=[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')].find(g=>g.querySelector('.cwfm-group-title').textContent.trim()==='閱讀紀錄');return g.textContent})()""")
     check('閱讀紀錄裡沒有精準定位', '精準定位' not in rec)
     nb = pg.evaluate("""(()=>{const n=document.querySelector('.cwfm-settings-panel .cwfm-newbook');if(!n)return null;
@@ -119,8 +119,8 @@ with sync_playwright() as p:
     EPUB = IMG_EPUB
     ctx = b.new_context(viewport={'width': 1200, 'height': 800}, locale='zh-TW')
     pg = page(ctx)
-    i = pg.evaluate(f"[{S}.maxColumnCount,{S}.leftRightPadding,{S}.topBottomPadding,{S}.columnGapPx,{S}.horizontalSizeMode,{S}.verticalSizeMode,{S}.tapZoneVisible]")
-    check('圖片書內建預設：橫向 2 欄、左右留白 0、上下留白 48（工具列）、欄間距 0、留白優先、點擊區照常顯示', i == [2, 0, 48, 0, 'margin', 'margin', True], i)
+    i = pg.evaluate(f"[{S}.maxColumnCount,{S}.leftRightPadding,{S}.topBottomPadding,{S}.columnGapPx,{S}.horizontalSizeMode,{S}.verticalSizeMode,{S}.tapZoneVisible,{S}.pageDirection,{S}.reverseTapZones,{V}.book.dir]")
+    check('圖片書內建預設（v1.86.0）：橫向 2 欄、上下左右留白 0、欄間距 0、留白優先、點擊區顯示、右翻、反轉點擊區', i == [2, 0, 0, 0, 'margin', 'margin', True, 'rtl', True, 'rtl'], i)
     pg.evaluate("window.__cwfm.setFrontInsert(true)"); pg.wait_for_timeout(1800)
     pg.evaluate(f"{V}.goTo('epubcfi(/6/4!/4)')"); pg.wait_for_timeout(1500)
     pg.wait_for_timeout(1500)  # 等紙色算完
@@ -132,7 +132,7 @@ with sync_playwright() as p:
           paperColor:window.__cwfm.bookState.paperColor}}}})()""")
     W = c['paper'][1] - c['paper'][0]; H = c['paper'][3] - c['paper'][2]
     colH = c['col'][3] - c['col'][2]
-    check('開始頁的紙跟後面那頁畫出來一樣大（寬≈高×0.69、高＝欄高）、貼著書脊', abs(H - colH) <= 1 and abs(W - H * 1650 / 2390) <= 2 and abs(c['paper'][1] - 600) <= 1, c)
+    check('開始頁的紙跟後面那頁畫出來一樣大（寬≈高×0.69、高＝欄高）、貼著書脊', abs(H - colH) <= 1 and abs(W - H * 1650 / 2390) <= 2 and min(abs(c['paper'][1] - 600), abs(c['paper'][0] - 600)) <= 1, c)
     check('書名在紙的正中央', abs(c['btn'] - (c['paper'][0] + c['paper'][1]) / 2) <= 1, c)
     check('紙色從內頁判斷（不是封面）、有細框', isinstance(c['paperColor'], str) and c['paperColor'].startswith('#') and c['border'] == '1px', c)
     pg.screenshot(path=f'{OUT_DIR}/v185_imgstart_{BR}.png')

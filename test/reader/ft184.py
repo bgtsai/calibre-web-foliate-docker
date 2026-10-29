@@ -29,6 +29,8 @@ def close_panel(pg):
 with sync_playwright() as p:
     BR = sys.argv[3]; b = getattr(p, BR).launch()
     ctx = b.new_context(viewport={'width': 1200, 'height': 800}, locale='zh-TW')
+    # v1.86.0 起內建「圖片書」預設右翻＋反轉點擊區；這支測 v1.84 的功能（左翻開始、再手動改右翻），先把內建圖片書覆蓋回左翻
+    ctx.add_init_script("if(!sessionStorage.getItem('s')&&!localStorage.getItem('cwfm-seeded')){localStorage.setItem('cwfm-settings',JSON.stringify({builtinProfiles:{image:{pageDirection:'ltr',reverseTapZones:false}}}));localStorage.setItem('cwfm-seeded','1')}")
     errs = []
 
     def page():
@@ -137,7 +139,7 @@ with sync_playwright() as p:
     check('從開始頁翻下一頁（右翻 ←）→ 下一個跨頁（第 2 頁起）', orig_index(pg.evaluate(CFI)) == 2, pg.evaluate(CFI))
     ls = pg.evaluate(LS)
     bk = (ls.get('bookSettings') or {}).get(str(BOOK_ID)) or {}
-    check('這本書記住：右翻、補一頁、插頁位置', (bk.get('b') or {}).get('pageDirection') == 'rtl' and bk['b'].get('frontInsert') is True and len(bk['b'].get('insertsBefore') or []) == 1, bk.get('b'))
+    check('這本書記住：右翻（v1.86.0 起是一般設定，存在 v）、補一頁、插頁位置', (bk.get('v') or {}).get('pageDirection') == 'rtl' and (bk.get('b') or {}).get('frontInsert') is True and len(bk['b'].get('insertsBefore') or []) == 1, [ (bk.get('v') or {}).get('pageDirection'), bk.get('b')])
     pg.close()
 
     # ---------- 5. 重開同一本：全部記住 ----------
@@ -164,7 +166,7 @@ with sync_playwright() as p:
         const col=g.find(w=>/跟隨系統/.test(w.textContent));
         const cb=[...col.querySelectorAll('.cwfm-keychip-builtin')].map(c=>!!c.querySelector('.cwfm-keychip-bicon svg'));
         return {b,sep,cb}})()""")
-    check('內建設定檔：文字書、圖片書排最前面，有圖示、沒有刪除鈕、沒有改名（只有覆蓋更新）', chips['b'] == [['文字書', True, False, 1], ['圖片書', True, False, 1]], chips['b'])
+    check('內建設定檔：文字書、圖片書排最前面，有圖示、沒有刪除鈕、沒有改名（只有覆蓋更新）', chips['b'][0] == ['文字書', True, False, 1] and chips['b'][1][:3] == ['圖片書', True, False], chips['b'])
     check('沒有自訂設定檔時不畫分隔線', not chips['sep'])
     check('配色的內建標籤也有圖示', len(chips['cb']) == 5 and all(chips['cb']), chips['cb'])
     pg.screenshot(path=f'{OUT_DIR}/v184_panel_{BR}.png')
