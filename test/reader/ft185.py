@@ -110,6 +110,9 @@ with sync_playwright() as p:
     check('文字書記住：補一頁＋一個插入點（原書 CFI）', bb.get('frontInsert') is True and len(bb.get('textInserts') or []) == 1 and bb['textInserts'][0].startswith('epubcfi('), bb)
     pg.close()
     pg = page(ctx)
+    # v1.87.1：重開時依閱讀進度回到插入點那頁（插在段落中間時，CFI 落在切開的文字節點切口；Firefox 以前會停在前一頁）
+    reopen = pg.evaluate(FIRST)
+    check('重開文字書：回到插入空白頁後的那一頁', reopen == after, [after, reopen])
     again = pg.evaluate(f"(async()=>{{const v={V};await v.goTo(0);return !!v.renderer.getContents()[0].doc.querySelector('cwfm-ins.cwfm-ins-start')}})()")
     check('重開文字書：書名頁還在', again)
     pg.close()

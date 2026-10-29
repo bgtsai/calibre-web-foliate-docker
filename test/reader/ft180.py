@@ -174,7 +174,7 @@ with sync_playwright() as p:
     pg.evaluate("document.documentElement.classList.remove('cwfm-bars-hidden')")
     pg.wait_for_timeout(1500)  # 讓跳轉紀錄存到伺服器
     # 重新整理＋自動隱藏工具列：讀回紀錄但不自己冒出來；喚醒後收回、再隱藏也不出現
-    pa = page(ctx, {'savedThemes': [{'id': 'A', 'name': 'A', 'values': {'autoHideToolbar': True, 'maxColumnCount': 1}}], 'newBookProfile': {'text': 'theme:A'}});  # v1.87.0：設定值屬於設定檔，全域值不再套用 pa.mouse.move(550, 400); pa.wait_for_timeout(4500)
+    pa = page(ctx, {'savedThemes': [{'id': 'A', 'name': 'A', 'values': {'autoHideToolbar': True, 'maxColumnCount': 1}}], 'newBookProfile': {'text': 'theme:A'}}); pa.mouse.move(550, 400); pa.wait_for_timeout(4500)  # v1.87.0：設定值屬於設定檔，全域值不再套用
     visa = lambda: pa.evaluate("(()=>{const e=document.querySelector('.cwfm-nav-float');return !!e && getComputedStyle(e).display!=='none'})()")
     check('重新整理後自動隱藏：有紀錄也不自己出現', pa.evaluate("document.documentElement.classList.contains('cwfm-bars-hidden')") and pa.evaluate("window.__cwfm.navSnapshot().toc.entries.length") > 0 and not visa())
     pa.evaluate("window.__cwfmNavRecord('link')"); pa.wait_for_timeout(200)
