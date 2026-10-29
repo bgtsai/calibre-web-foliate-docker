@@ -7,7 +7,8 @@ OUT_DIR = os.environ.get('OUT_DIR', '/tmp')
 BACK = ".cwfm-toolbar-top .cwfm-nav-group[data-nav-kind=toc] .cwfm-nav-btn"
 CNT = f"document.querySelector('{BACK}').querySelector('.cwfm-nav-count').textContent"
 TITLE = f"document.querySelector('{BACK}').title"
-ANIM = f"(()=>{{const b=document.querySelector('{BACK}');return [!!b.dataset.cwfmAnim, !!b.querySelector('clipPath')]}})()"
+# v1.84.0：上一步改方案 E——不換圖示，按鈕標 data-cwfm-anim-nav、箭頭放大＋數字位置出現「+1」
+ANIM = f"(()=>{{const b=document.querySelector('{BACK}');const p=b.querySelector('.cwfm-nav-plus');return [!!b.dataset.cwfmAnimNav, !!p && p.textContent === '+1']}})()"
 BMB = 'button[aria-label="加入書籤"], button[aria-label="Add bookmark"]'
 BMANIM = f"(()=>{{const b=document.querySelector('{BMB}');return [!!b.dataset.cwfmAnim, !!b.querySelector('clipPath'), b.querySelector('svg').getAttribute('fill')]}})()"
 
@@ -34,15 +35,15 @@ with sync_playwright() as p:
         drag(pg); pg.wait_for_timeout(120)
         mid = pg.evaluate(ANIM)
         anim_name = pg.evaluate(f"getComputedStyle(document.querySelector('{BACK} svg')).animationName")
-        top_anim = pg.evaluate(f"getComputedStyle(document.querySelector('{BACK} .cwfm-anim-top')).animationName")
+        top_anim = pg.evaluate(f"getComputedStyle(document.querySelector('{BACK} .cwfm-nav-plus')).animationName")
         if motion == 'no-preference': pg.screenshot(path=f'{OUT_DIR}/v183_anim_{BR}.png', clip={'x': 1000, 'y': 0, 'width': 200, 'height': 48})
-        check('拖動放開：上一步播動畫（換上動畫圖示）' + tag, mid == [True, True], mid)
+        check('拖動放開：上一步播動畫（+1）' + tag, mid == [True, True], mid)
         if motion == 'no-preference':
             check('一般：放大動畫', anim_name == 'cwfm-anim-pulse', anim_name)
         else:
-            check('減少動態效果：不放大、改淡入', anim_name == 'none' and top_anim == 'cwfm-anim-glow', [anim_name, top_anim])
+            check('減少動態效果：不放大、+1 只淡入淡出', anim_name == 'none' and top_anim == 'cwfm-anim-plus-fade', [anim_name, top_anim])
         pg.wait_for_timeout(800)
-        check('動畫播完換回一般圖示' + tag, pg.evaluate(ANIM) == [False, False], pg.evaluate(ANIM))
+        check('動畫播完' + tag, pg.evaluate(ANIM)[0] is False, pg.evaluate(ANIM))
         if motion == 'no-preference':
             check('98 → 99（還沒丟過舊紀錄，不顯示 99+）', pg.evaluate(CNT) == '99' and '\n' not in pg.evaluate(TITLE), pg.evaluate(CNT))
             drag(pg); pg.wait_for_timeout(1200)
