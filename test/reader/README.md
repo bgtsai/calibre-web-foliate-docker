@@ -19,6 +19,7 @@ for b in chromium webkit firefox; do
   python3 ft185.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.85：新書開啟時套用、書名頁、文字書插頁、虛擬頁
   python3 ft186.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.86：翻頁方向一般設定、紙色、扉頁、滑桿不卡
   python3 ft187.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.87：設定檔自動存回、內建唯讀→（已調整）、書指向設定檔、還原、圖示 14px
+  python3 ft188.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b      # v1.88：滑桿停頓重排／透明／觸控放大版、觸控放大與 44px 目標、預設收合與內建值、首次教學
   python3 feat_test.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js $b  # 舊版功能
 done
 python3 ft_zh2.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js chromium   # 中文介面
@@ -26,6 +27,7 @@ python3 ft_ipad.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js webkit    # iPad 
 python3 ah.py /tmp/cwfm-test/dp.html /tmp/cwfm-test/dr.js chromium       # 自動隱藏
 ```
 
+- v1.88 起測試頁預設擋掉首次教學、沿用 v1.87 的預設值（工具列不自動隱藏、分組展開），見 `build.sh`；要測新行為在測試裡先設 sessionStorage 的 `cwfm-tut-test`／`cwfm-v188-test`（ft188 的寫法）。
 - 觸控（手機／平板）只有 Chromium 能模擬（`is_mobile`＋`has_touch`），WebKit／Firefox 會略過那幾項。
 - 測試環境已知會出現一則「初始鎖定定位點失敗」（從頭開書時，舊版也有），⚠ 1 屬正常。
 - `shot_readme2.py`：重拍 README 截圖（中文書／英文書各一，`SHOT_TM=1` 拍 Tampermonkey 版——沒有伺服器 API、不會出現錯誤紀錄區）。

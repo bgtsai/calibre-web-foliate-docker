@@ -1,3 +1,4 @@
+# v1.88.0 更新：內建圖片書翻頁動畫顏色改回 AUTO
 # v1.87.0：設定檔改成「目前使用中的那一組，調整自動存回」——自動儲存、內建唯讀→自動建立「（已調整）」與編號、
 #          書指向設定檔且共用、還原這次調整（含刪副本、兩處按鈕）、介面狀態／素材庫／語言不跟設定檔、選中樣式、
 #          標籤前置圖示 14px、內建圖片書動畫黑色、舊資料（v、builtinProfiles）丟掉、刪掉使用中的設定檔退回新書預設
@@ -141,7 +142,7 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={'width': 1200, 'height': 800}, locale='zh-TW')
     pg = page(ctx)
     a = pg.evaluate(f"[!!window.__cwfm.imageBook, {S}.pageFlipAnimColor, {S}.tapZoneVisible]")
-    check('內建圖片書：翻頁動畫顏色黑色（不是 AUTO）、點擊區提示照常顯示', a == [True, '#000000', True], a)
+    check('內建圖片書：翻頁動畫顏色 AUTO（v1.88 撤回 v1.87 的黑色）、點擊區提示照常顯示（測試頁沿用舊預設）', a == [True, 'AUTO', True], a)
     open_panel(pg)
     s = state(pg)
     check('圖片書開書：選中內建圖片書', s['ref'] == ['builtin:image'], s)
