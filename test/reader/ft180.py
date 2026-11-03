@@ -273,7 +273,7 @@ with sync_playwright() as p:
           and len(ab['links']) == 1 and ab['links'][0][0] in ('說明頁（GitHub）', 'Documentation (GitHub)')
           and ab['links'][0][1] == 'https://github.com/bgtsai/calibre-web-foliate-docker' and ab['links'][0][2] == '_blank', ab)
     fs = pg.evaluate("(()=>{const r=document.querySelector('.cwfm-about-row');const l=[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')].find(g=>/Language|語言/.test(g.textContent)).querySelector('label');return [getComputedStyle(r.children[0]).fontSize,getComputedStyle(r.children[1]).fontSize,getComputedStyle(document.querySelector('.cwfm-about-links a')).fontSize,getComputedStyle(l).fontSize,getComputedStyle(r.children[0]).color===getComputedStyle(l).color]})()")
-    check('字級跟其他分組一致：名稱 12px（同欄位說明、同色）、內容與連結 13px', fs[:3] == ['12px', '13px', '13px'] and fs[3] == '12px' and fs[4], fs)
+    check('字級跟其他分組一致：名稱跟其他項目名稱同字級、同色（v1.89 起項目名稱 13px 主文字色），內容與連結 13px', fs[0] == fs[3] and fs[1:3] == ['13px', '13px'] and fs[4], fs)
     pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-panel-body').scrollTop=1e6"); pg.wait_for_timeout(200)
     pg.screenshot(path=f'v1810_about_{BROWSER}.png')
     pg.close()

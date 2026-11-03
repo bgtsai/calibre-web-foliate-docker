@@ -36,7 +36,7 @@ with sync_playwright() as p:
 
     # 2. 滑鼠按住滑桿：面板 5%，放開恢復；沒有放大版
     box = pg.evaluate(f"(()=>{{const r={FONT}.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}})()")
-    pg.mouse.move(box[0] + box[2] * 0.3, box[1] + box[3] / 2); pg.mouse.down(); pg.wait_for_timeout(250)
+    pg.mouse.move(box[0] + box[2] * 0.3, box[1] + box[3] / 2); pg.mouse.down(); pg.wait_for_timeout(450)
     op = pg.evaluate("getComputedStyle(document.querySelector('.cwfm-settings-panel')).opacity")
     mag = pg.evaluate("!!document.querySelector('.cwfm-mag')")
     pg.mouse.move(box[0] + box[2] * 0.5, box[1] + box[3] / 2, steps=5); pg.mouse.up(); pg.wait_for_timeout(300)
@@ -120,7 +120,9 @@ with sync_playwright() as p:
     check('第 1 步工具列顯示、第 2 步打開設定面板', st[0]['barsShown'] and not st[0]['panel'] and st[1]['panel'], st)
     check('教學期間只展開設定檔、翻頁設定、教學', all(sorted(x['open']) == sorted(['設定檔', '翻頁設定', '教學']) for x in st[1:]), [x['open'] for x in st])
     if BR != 'firefox':
-        check('觸控：設定內容放大 1.3 倍', pg.evaluate("document.querySelector('.cwfm-fields-wrap').style.zoom") == '1.3')
+        fs = pg.evaluate("""(()=>{const P=document.querySelector('.cwfm-settings-panel');const f=s=>{const e=[...P.querySelectorAll(s)].find(x=>x.getBoundingClientRect().height>0);return e?parseFloat(getComputedStyle(e).fontSize):null};
+            return {zoom:document.querySelector('.cwfm-fields-wrap').style.zoom||'', title:f('.cwfm-panel-header h3'), group:f('.cwfm-group-title'), label:f('.cwfm-field > label'), hint:f('.cwfm-field-hint')}})()""")
+        check('觸控字階：不用 zoom；標題 20、分組標題＝項目名稱 17、說明 15（只靠字級與顏色分層）', fs['zoom'] == '' and fs['group'] == 17 and fs['label'] == 17 and fs['hint'] in (15, None) and fs['title'] in (20, None), fs)
     pg.keyboard.press('ArrowRight'); pg.wait_for_timeout(300)
     check('教學中按鍵不傳到下面（不翻頁、教學還在）', pg.evaluate("!!document.querySelector('.cwfm-tut')"))
     pg.click('.cwfm-tut-next'); pg.wait_for_timeout(600)
@@ -135,15 +137,20 @@ with sync_playwright() as p:
     pg.evaluate("[...document.querySelectorAll('.cwfm-settings-panel button')].find(b=>b.textContent==='重新看教學').click()"); pg.wait_for_timeout(800)
     rp = pg.evaluate("({on:!!document.querySelector('.cwfm-tut'), n:document.querySelector('.cwfm-tut-count')?.textContent})")
     check('「教學」分組〔重新看教學〕從第 1 步開始', rp['on'] and rp['n'] == '1 / 4', rp)
-    pg.click('.cwfm-tut-skip'); pg.wait_for_timeout(400)
-    check('〔跳過〕立刻結束', pg.evaluate("!document.querySelector('.cwfm-tut')"))
+    pg.click('.cwfm-tut-skip'); pg.wait_for_timeout(700)
+    sk = pg.evaluate("({n:document.querySelector('.cwfm-tut-count')?.textContent, skipShown:getComputedStyle(document.querySelector('.cwfm-tut-skip')).display!=='none'})")
+    check('〔跳過〕跳到最後一步（4 / 4），最後一步沒有〔跳過〕', sk['n'] == '4 / 4' and not sk['skipShown'], sk)
+    pg.click('.cwfm-tut-next'); pg.wait_for_timeout(400)
+    check('最後一步〔確定〕結束', pg.evaluate("!document.querySelector('.cwfm-tut')"))
     open_panel(pg)
     after = pg.evaluate(OPEN); rec1 = pg.evaluate("JSON.stringify(window.__cwfm.settings.groupCollapsedState)")
     check('教學結束後分組還原成使用者原本的展開／收合，收合紀錄沒被改', after == before and rec1 == rec0 and '字體' in before and '設定檔' not in before, [before, after, rec0, rec1])
     pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-close-btn')?.click()"); pg.wait_for_timeout(300)
     pg.evaluate("window.__cwfm.startTutorial()"); pg.wait_for_timeout(500)
-    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
-    check('Esc＝跳過', pg.evaluate("!document.querySelector('.cwfm-tut')"))
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(500)
+    e1 = pg.evaluate("document.querySelector('.cwfm-tut-count')?.textContent")
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
+    check('Esc＝跳過：先跳到最後一步，再按一次結束', e1 == '4 / 4' and pg.evaluate("!document.querySelector('.cwfm-tut')"), e1)
 
     # 觸控目標至少 44×44：在元件中心往外 21px 的位置點，還是點到同一個元件（外觀大小不變）
     if BR != 'firefox':

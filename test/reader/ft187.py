@@ -66,7 +66,7 @@ with sync_playwright() as p:
     icons = pg.evaluate(f"""(()=>{{const q=s=>[...document.querySelectorAll(s)].map(e=>{{const r=e.querySelector('svg').getBoundingClientRect();return [r.width,r.height]}});
         const chipH=[...{PROF}.querySelectorAll('.cwfm-keychip')].map(c=>c.getBoundingClientRect().height);
         return {{prof:q('.cwfm-settings-panel .cwfm-keychip-builtin .cwfm-keychip-bicon'), chipH}}}})()""")
-    check('設定檔與配色的內建標籤前置圖示 14px', all(abs(w - 14) <= 0.5 and abs(h - 14) <= 0.5 for w, h in icons['prof']) and len(icons['prof']) >= 7, icons['prof'])
+    check('設定檔與配色的內建標籤前置圖示 14px（v1.89 起依圖示形狀視覺補償 ±1px，例如月亮 15）', all(abs(w - 14) <= 1 and abs(h - 14) <= 1 for w, h in icons['prof']) and len(icons['prof']) >= 7, icons['prof'])
     check('標籤高度沒被撐高（內建與一般標籤同高）', max(icons['chipH']) - min(icons['chipH']) <= 0.5, icons['chipH'])
     check('沒有磁碟（覆蓋更新）鈕、沒有恢復預設值鈕', pg.evaluate(f"{PROF}.querySelectorAll('.cwfm-keychip-builtin .cwfm-keychip-rename').length") == 0)
     bump_font(pg)
