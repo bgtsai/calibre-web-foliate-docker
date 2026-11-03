@@ -109,14 +109,16 @@ with sync_playwright() as p:
     pg.add_init_script("sessionStorage.setItem('cwfm-tut-test','1');sessionStorage.setItem('cwfm-v188-test','1')")
     pg.goto(URL); pg.wait_for_timeout(6000)
     st = []
-    for i in range(3):
+    for i in range(4):
         st.append(pg.evaluate("""(()=>{const c=document.querySelector('.cwfm-tut-card');if(!c)return null;const r=c.getBoundingClientRect();
             return {t:c.querySelector('.cwfm-tut-title').textContent, n:c.querySelector('.cwfm-tut-count').textContent, btn:c.querySelector('.cwfm-tut-next').textContent,
               inView:r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight, rings:document.querySelectorAll('.cwfm-tut-ring').length,
-              barsShown:!document.documentElement.classList.contains('cwfm-bars-hidden'), panel:!!document.querySelector('.cwfm-settings-panel.cwfm-open')}})()"""))
-        if i < 2: pg.click('.cwfm-tut-next'); pg.wait_for_timeout(700)
-    check('教學自動出現：三步依序、說明卡在畫面內、每步有框線', all(s and s['inView'] and s['rings'] >= 1 for s in st) and [s['t'] for s in st] == ['工具列會自動隱藏', '設定檔', '翻頁點擊區'] and st[2]['btn'] == '確定', st)
+              barsShown:!document.documentElement.classList.contains('cwfm-bars-hidden'), panel:!!document.querySelector('.cwfm-settings-panel.cwfm-open'),
+              open:[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')].filter(g=>g.querySelector('.cwfm-group-body').style.display!=='none').map(g=>g.querySelector('.cwfm-group-title').textContent.trim())}})()"""))
+        if i < 3: pg.click('.cwfm-tut-next'); pg.wait_for_timeout(700)
+    check('教學自動出現：三步依序、說明卡在畫面內、每步有框線', all(s and s['inView'] and s['rings'] >= 1 for s in st) and [s['t'] for s in st] == ['工具列會自動隱藏', '設定檔', '翻頁點擊區', '隨時可以重看'] and st[2]['btn'] == '下一步' and st[3]['btn'] == '確定', st)
     check('第 1 步工具列顯示、第 2 步打開設定面板', st[0]['barsShown'] and not st[0]['panel'] and st[1]['panel'], st)
+    check('教學期間只展開設定檔、翻頁設定、教學', all(sorted(x['open']) == sorted(['設定檔', '翻頁設定', '教學']) for x in st[1:]), [x['open'] for x in st])
     if BR != 'firefox':
         check('觸控：設定內容放大 1.3 倍', pg.evaluate("document.querySelector('.cwfm-fields-wrap').style.zoom") == '1.3')
     pg.keyboard.press('ArrowRight'); pg.wait_for_timeout(300)
@@ -127,11 +129,18 @@ with sync_playwright() as p:
     pg.reload(); pg.wait_for_timeout(6000)
     check('看過之後重開不再出現', pg.evaluate("!document.querySelector('.cwfm-tut')"))
     open_panel(pg)
+    pg.evaluate("[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group-title')].filter(h=>['字體','設定檔'].includes(h.textContent.trim())).forEach(h=>h.click())"); pg.wait_for_timeout(400)
+    OPEN = "[...document.querySelectorAll('.cwfm-settings-panel .cwfm-group')].filter(g=>g.querySelector('.cwfm-group-body').style.display!=='none').map(g=>g.querySelector('.cwfm-group-title').textContent.trim()).sort()"
+    before = pg.evaluate(OPEN); rec0 = pg.evaluate("JSON.stringify(window.__cwfm.settings.groupCollapsedState)")
     pg.evaluate("[...document.querySelectorAll('.cwfm-settings-panel button')].find(b=>b.textContent==='重新看教學').click()"); pg.wait_for_timeout(800)
     rp = pg.evaluate("({on:!!document.querySelector('.cwfm-tut'), n:document.querySelector('.cwfm-tut-count')?.textContent})")
-    check('「教學」分組〔重新看教學〕從第 1 步開始', rp['on'] and rp['n'] == '1 / 3', rp)
+    check('「教學」分組〔重新看教學〕從第 1 步開始', rp['on'] and rp['n'] == '1 / 4', rp)
     pg.click('.cwfm-tut-skip'); pg.wait_for_timeout(400)
     check('〔跳過〕立刻結束', pg.evaluate("!document.querySelector('.cwfm-tut')"))
+    open_panel(pg)
+    after = pg.evaluate(OPEN); rec1 = pg.evaluate("JSON.stringify(window.__cwfm.settings.groupCollapsedState)")
+    check('教學結束後分組還原成使用者原本的展開／收合，收合紀錄沒被改', after == before and rec1 == rec0 and '字體' in before and '設定檔' not in before, [before, after, rec0, rec1])
+    pg.evaluate("document.querySelector('.cwfm-settings-panel .cwfm-close-btn')?.click()"); pg.wait_for_timeout(300)
     pg.evaluate("window.__cwfm.startTutorial()"); pg.wait_for_timeout(500)
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
     check('Esc＝跳過', pg.evaluate("!document.querySelector('.cwfm-tut')"))
