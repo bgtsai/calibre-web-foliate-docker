@@ -1,1 +1,1 @@
-Linuxserver.io version:- 0.6.27-ls409 Build-date:- 2026-11-08T05:58:00+00:00
+Linuxserver.io version:- 0.6.27-ls410 Build-date:- 2026-11-15T06:22:21+00:00
