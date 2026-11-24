@@ -3,6 +3,9 @@
 <title>Calibre-Web Foliate Docker 建置狀態</title>
 <description>每日檢查上游 linuxserver/calibre-web 並自動建置的執行紀錄</description>
 <link>https://github.com/bgtsai/calibre-web-foliate-docker</link>
+<item><title>🟢 22:39 2026.11.24｜上游無更新</title><description><![CDATA[【摘要】上游 linuxserver/calibre-web 沒有新版，本次不建置<br>
+【上游版本】0.6.27-ls411（2026-11-22 發布）<br>
+【閱讀器版本】mod v1.89.0（c2f9033）]]></description><pubDate>Tue, 24 Nov 2026 14:40:16 +0000</pubDate><guid isPermaLink="false">cwfm-docker-45416598228-1</guid></item>
 <item><title>🟢 22:12 2026.11.23｜上游無更新</title><description><![CDATA[【摘要】上游 linuxserver/calibre-web 沒有新版，本次不建置<br>
 【上游版本】0.6.27-ls411（2026-11-22 發布）<br>
 【閱讀器版本】mod v1.89.0（c2f9033）]]></description><pubDate>Mon, 23 Nov 2026 14:12:48 +0000</pubDate><guid isPermaLink="false">cwfm-docker-45191679235-1</guid></item>
@@ -63,7 +66,4 @@
 <item><title>🟢 19:59 2026.11.05｜上游無更新</title><description><![CDATA[【摘要】上游 linuxserver/calibre-web 沒有新版，本次不建置<br>
 【上游版本】0.6.27-ls408（2026-11-01 發布）<br>
 【閱讀器版本】mod v1.89.0（c2f9033）]]></description><pubDate>Thu, 05 Nov 2026 11:59:39 +0000</pubDate><guid isPermaLink="false">cwfm-docker-42023362907-1</guid></item>
-<item><title>🟢 19:56 2026.11.04｜上游無更新</title><description><![CDATA[【摘要】上游 linuxserver/calibre-web 沒有新版，本次不建置<br>
-【上游版本】0.6.27-ls408（2026-11-01 發布）<br>
-【閱讀器版本】mod v1.89.0（c2f9033）]]></description><pubDate>Wed, 04 Nov 2026 11:56:30 +0000</pubDate><guid isPermaLink="false">cwfm-docker-41824974907-1</guid></item>
 </channel></rss>
